@@ -1,0 +1,8 @@
+# whale-alerts — never commit real secrets
+.env
+.env.*
+!.env.example
+node_modules/
+.wrangler/
+dist/
+*.log

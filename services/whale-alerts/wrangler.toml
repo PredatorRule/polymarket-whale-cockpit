@@ -1,0 +1,28 @@
+name = "whale-alerts"
+main = "src/index.ts"
+compatibility_date = "2026-09-11"
+
+# Poll for new whale trades every 5 minutes (Workers Free Tier friendly).
+[triggers]
+crons = ["*/5 * * * *"]
+
+# Non-secret defaults. Secrets are set separately (NEVER committed):
+#   wrangler secret put TELEGRAM_BOT_TOKEN
+#   wrangler secret put TELEGRAM_CHAT_ID
+[vars]
+# Comma-separated wallets to monitor. Leave empty to auto-track the live
+# leaderboard's top N wallets.
+WATCH_WALLETS = ""
+TOP_N = "10"
+# Only alert on trades at or above this USD notional.
+MIN_NOTIONAL_USD = "10000"
+# Lookback window (minutes) each run scans for new trades.
+LOOKBACK_MINUTES = "10"
+
+# Persistent dedupe state so the same trade is never alerted twice.
+[[kv_namespaces]]
+binding = "ALERT_STATE"
+id = "REPLACE_WITH_KV_NAMESPACE_ID"
+
+[observability]
+enabled = true
