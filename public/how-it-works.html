@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>How to Track Polymarket Whales — Wallet PnL, Win Rate &amp; Volume</title>
+    <meta
+      name="description"
+      content="A plain-English guide to reading Polymarket whale wallets: how PnL, win rate, volume, drawdown, and maker vs taker behavior are calculated from public on-chain data, and how to use them without getting fooled."
+    />
+    <meta
+      name="keywords"
+      content="how to track polymarket whales, polymarket wallet pnl explained, polymarket win rate, maker taker polymarket, polymarket smart money tracking"
+    />
+    <link rel="canonical" href="https://polymarket-whale-cockpit.pages.dev/how-it-works" />
+    <meta property="og:title" content="How to Track Polymarket Whales" />
+    <meta property="og:description" content="How PnL, win rate, volume, and maker/taker behavior are computed from public Polymarket data." />
+    <meta property="og:type" content="article" />
+    <meta property="og:url" content="https://polymarket-whale-cockpit.pages.dev/how-it-works" />
+    <meta property="og:image" content="https://polymarket-whale-cockpit.pages.dev/og-image.png" />
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "Article",
+        "headline": "How to Track Polymarket Whales",
+        "description": "How PnL, win rate, volume, drawdown, and maker/taker behavior are computed from public Polymarket data.",
+        "author": { "@type": "Organization", "name": "Polymarket Whale Cockpit" },
+        "mainEntityOfPage": "https://polymarket-whale-cockpit.pages.dev/how-it-works"
+      }
+    </script>
+
+    <style>
+      :root { color-scheme: dark; }
+      * { box-sizing: border-box; }
+      body { margin: 0; background: #09090b; color: #e4e4e7; font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; line-height: 1.65; }
+      .wrap { max-width: 760px; margin: 0 auto; padding: 48px 20px 96px; }
+      a { color: #38bdf8; text-decoration: none; }
+      a:hover { text-decoration: underline; }
+      h1 { font-size: 1.9rem; line-height: 1.2; margin: 0 0 8px; color: #fafafa; }
+      h2 { font-size: 1.25rem; margin: 36px 0 10px; color: #fafafa; }
+      p, li { color: #a1a1aa; }
+      code { font-family: ui-monospace, "SF Mono", Menlo, monospace; color: #e4e4e7; }
+      .lede { font-size: 1.05rem; color: #d4d4d8; }
+      .eyebrow { font-family: ui-monospace, monospace; font-size: 0.72rem; letter-spacing: 0.2em; text-transform: uppercase; color: #34d399; }
+      .card { background: rgba(18,18,21,0.9); border: 1px solid #27272a; border-radius: 12px; padding: 16px 20px; margin: 24px 0; }
+      .cta { display: inline-block; margin: 6px 8px 6px 0; padding: 10px 16px; border-radius: 10px; border: 1px solid #27272a; background: #121215; color: #e4e4e7; font-size: 0.9rem; }
+      .cta.primary { background: #06b6d4; color: #06202a; border-color: #06b6d4; font-weight: 600; }
+      nav.crumbs { font-size: 0.85rem; margin-bottom: 24px; color: #52525b; }
+      footer { margin-top: 64px; padding-top: 24px; border-top: 1px solid #27272a; font-size: 0.85rem; color: #52525b; }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <nav class="crumbs"><a href="/">Polymarket Whale Cockpit</a> / How it works</nav>
+
+      <span class="eyebrow">Guide</span>
+      <h1>How to Track Polymarket Whales</h1>
+      <p class="lede">
+        The leaderboard turns raw public Polymarket data into five numbers that
+        actually tell you something. Here is what each one means — and where it
+        can mislead you.
+      </p>
+
+      <h2>PnL and volume (the leaderboard)</h2>
+      <p>
+        Ranked profit and total traded volume come straight from Polymarket's
+        public leaderboard for the all-time, 30-day, and 7-day windows. Volume
+        matters as much as PnL: a huge PnL on enormous volume is a thinner edge
+        than the same PnL on modest volume.
+      </p>
+
+      <h2>Win rate and W/L</h2>
+      <p>
+        Computed from public closed positions: the share of closed positions with
+        positive realized PnL. A high win rate with a small average win can still
+        lose money, so read it alongside PnL, not on its own.
+      </p>
+
+      <h2>Drawdown</h2>
+      <p>
+        The largest peak-to-trough drop across the wallet's realized-PnL sequence.
+        It's the gut-check number: two wallets with identical PnL are not equal if
+        one reached it smoothly and the other survived a brutal drawdown.
+      </p>
+
+      <h2>Open positions</h2>
+      <p>
+        Current public positions and their combined value — the wallet's live
+        exposure right now. A whale with many open positions is actively deployed;
+        one with none has taken profit or gone flat.
+      </p>
+
+      <h2>Maker vs taker (why copying is hard)</h2>
+      <p>
+        A maker posts resting orders and gets queue-priority fills; a taker crosses
+        the spread. This matters enormously for copy-trading: a maker-heavy whale's
+        fills are <em>not</em> reproducible by buying later at market, and a taker's
+        entry may already have moved the price. That's why this tool frames wallets
+        as leads to verify, not signals to blindly mirror.
+      </p>
+
+      <div class="card">
+        <strong>See it live:</strong> the leaderboard applies all of this to the
+        current top Polymarket wallets, updated from public data.
+        <div style="margin-top:12px;">
+          <a class="cta primary" href="/">Open the live tracker</a>
+          <a class="cta" href="/faq">Read the FAQ</a>
+        </div>
+      </div>
+
+      <footer>
+        Independent tool, not affiliated with Polymarket. Educational information
+        only; not financial advice. &middot; <a href="/">Back to the tracker</a>
+      </footer>
+    </div>
+  </body>
+</html>

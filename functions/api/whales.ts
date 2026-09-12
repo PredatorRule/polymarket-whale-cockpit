@@ -1,161 +1,258 @@
 // functions/api/whales.ts
-// Cloudflare Pages Function — server-side proxy to the Apify Edge Audit actor.
+// Cloudflare Pages Function — calls Polymarket's PUBLIC APIs directly.
 //
-// The browser must never hold the Apify token, and page loads must never
-// trigger PAID actor runs. This function holds the token as a secret and READS
-// the actor's last successful dataset (reading stored results is free; only
-// running the actor costs money). The frontend calls /api/whales.
+// No Apify, no token, no cost. Server-to-server fetch (no browser CORS limit).
+// Ports the audit logic from the Apify actor's core.py:
+//   - data-api /v1/leaderboard  -> ranked wallets + official PnL + volume
+//   - data-api /closed-positions -> realized PnL rows => win rate, W/L, drawdown
+//   - data-api /positions        -> open positions => active count + value
 //
-// Parses the REAL Edge Audit schema (verified against the actor source):
-//   { wallet, leaderboard:{day,week,month,all:{rank,pnl_usdc,volume_usdc}},
-//     open_positions:{position_rows,current_value_usdc,cash_pnl_usdc,...},
-//     closed_positions:{realized_pnl_usdc,profitable_row_rate,winning_rows,
-//       losing_rows,profit_factor,max_drawdown_closed_pnl_sequence_usdc,
-//       top_10pct_winners_share_of_gross_profit,...},
-//     trade_sample:{sample_turnover_usdc,maker_share_by_count,observed_behavior,
-//       two_sided_buy_markets,...}, fee_sample, risk_flags, data_quality }
+// Results are edge-cached so repeat visitors don't refan the requests.
 //
-// Required Pages secret (Settings → Environment variables, encrypted):
-//   APIFY_TOKEN = <your Apify API token>
-// Optional:
-//   APIFY_ACTOR = redfoxxie~polymarket-wallet-edge-audit  (default below)
+// Optional env:
+//   LEADERBOARD_LIMIT (default "20")   how many top wallets to build
+//   WHALES_CACHE_SECONDS (default "600")
+
+const DATA_BASE = "https://data-api.polymarket.com";
 
 interface Env {
-  APIFY_TOKEN?: string;
-  APIFY_ACTOR?: string;
+  LEADERBOARD_LIMIT?: string;
+  WHALES_CACHE_SECONDS?: string;
 }
-
-const DEFAULT_ACTOR = "redfoxxie~polymarket-wallet-edge-audit";
-const CACHE_SECONDS = 300;
 
 type Json = Record<string, unknown>;
 
-function obj(v: unknown): Json {
-  return v && typeof v === "object" ? (v as Json) : {};
+function n(v: unknown, d = 0): number {
+  const x = typeof v === "string" ? Number(v) : v;
+  return typeof x === "number" && Number.isFinite(x) ? x : d;
 }
-function num(v: unknown, fallback = 0): number {
-  const n = typeof v === "string" ? Number(v) : v;
-  return typeof n === "number" && Number.isFinite(n) ? n : fallback;
+function s(v: unknown, d = ""): string {
+  return typeof v === "string" ? v : d;
 }
-function str(v: unknown, fallback = ""): string {
-  return typeof v === "string" ? v : fallback;
+/** First present value across candidate keys. */
+function pickN(o: Json, keys: string[], d = 0): number {
+  for (const k of keys) if (o[k] !== undefined && o[k] !== null) return n(o[k], d);
+  return d;
+}
+function pickS(o: Json, keys: string[], d = ""): string {
+  for (const k of keys) if (typeof o[k] === "string" && o[k]) return o[k] as string;
+  return d;
 }
 
-/** Normalized flat shape the client adapter consumes. */
+async function getJson(url: string): Promise<unknown> {
+  const res = await fetch(url, {
+    headers: { accept: "application/json", "user-agent": "whale-cockpit/1.0" },
+    cf: { cacheTtl: 300, cacheEverything: true },
+  } as RequestInit);
+  if (!res.ok) throw new Error(`${url} -> ${res.status}`);
+  return res.json();
+}
+
+interface LeaderRow {
+  wallet: string;
+  pnl: number;
+  volume: number;
+  rank: number;
+  name?: string;
+}
+
+/** Fetch a ranked leaderboard page for one period. */
+async function leaderboard(period: "DAY" | "WEEK" | "MONTH" | "ALL", limit: number): Promise<LeaderRow[]> {
+  const url = `${DATA_BASE}/v1/leaderboard?timePeriod=${period}&orderBy=PNL&limit=${limit}`;
+  const payload = (await getJson(url)) as unknown;
+  const rows = Array.isArray(payload) ? (payload as Json[]) : [];
+  return rows.map((r, i) => ({
+    wallet: pickS(r, ["proxyWallet", "wallet", "user", "address", "walletAddress"]).toLowerCase(),
+    pnl: pickN(r, ["pnl", "pnl_usdc", "pnlUsdc", "profit"]),
+    volume: pickN(r, ["vol", "volume", "volume_usdc", "volumeUsdc"]),
+    rank: pickN(r, ["rank"], i + 1),
+    name: pickS(r, ["name", "pseudonym", "ensName", "displayName"]) || undefined,
+  }));
+}
+
+interface WinStats {
+  winRate: number;
+  wins: number;
+  losses: number;
+  maxDrawdownUsdc: number;
+  closedRows: number;
+}
+
+/** Closed-positions -> win rate / W-L / drawdown (ports summarize_closed). */
+async function closedStats(wallet: string): Promise<WinStats> {
+  const url = `${DATA_BASE}/closed-positions?user=${wallet}&limit=500&sortBy=TIMESTAMP&sortDirection=DESC`;
+  let rows: Json[] = [];
+  try {
+    const payload = (await getJson(url)) as unknown;
+    rows = Array.isArray(payload) ? (payload as Json[]) : [];
+  } catch {
+    rows = [];
+  }
+  const pnl = rows.map((r) => n(r.realizedPnl ?? r.realized_pnl ?? r.pnl));
+  const wins = pnl.filter((v) => v > 1e-9).length;
+  const losses = pnl.filter((v) => v < -1e-9).length;
+  const total = pnl.length;
+
+  // Max drawdown over the realized-PnL sequence (oldest -> newest).
+  const ordered = [...rows].sort(
+    (a, b) => n(a.timestamp) - n(b.timestamp),
+  );
+  let cum = 0, peak = 0, dd = 0;
+  for (const r of ordered) {
+    cum += n(r.realizedPnl ?? r.realized_pnl ?? r.pnl);
+    peak = Math.max(peak, cum);
+    dd = Math.max(dd, peak - cum);
+  }
+
+  return {
+    winRate: total ? (wins / total) * 100 : 0,
+    wins,
+    losses,
+    maxDrawdownUsdc: dd,
+    closedRows: total,
+  };
+}
+
+export interface ApiPosition {
+  marketTitle: string;
+  outcome: "YES" | "NO";
+  shares: number;
+  avgPrice: number; // 0..1
+  currentPrice: number; // 0..1
+  pnl: number;
+  pnlPercent: number;
+  totalCost: number;
+}
+
+interface OpenStats {
+  positionRows: number;
+  currentValueUsdc: number;
+  cashPnlUsdc: number;
+  positions: ApiPosition[];
+  topBet: ApiPosition | null;
+}
+
+function toOutcome(v: unknown): "YES" | "NO" {
+  return String(v ?? "YES").toUpperCase() === "NO" ? "NO" : "YES";
+}
+
+/** Open-positions -> active count, value, AND real per-position rows. */
+async function openStats(wallet: string): Promise<OpenStats> {
+  const url = `${DATA_BASE}/positions?user=${wallet}&sizeThreshold=0&limit=500&sortBy=CURRENT&sortDirection=DESC`;
+  let rows: Json[] = [];
+  try {
+    const payload = (await getJson(url)) as unknown;
+    rows = Array.isArray(payload) ? (payload as Json[]) : [];
+  } catch {
+    rows = [];
+  }
+
+  const positions: ApiPosition[] = rows.map((r) => {
+    const avgPrice = n(r.avgPrice ?? r.avg_price);
+    const currentPrice = n(r.curPrice ?? r.currentPrice ?? avgPrice);
+    const shares = n(r.size ?? r.shares);
+    const totalCost = n(r.initialValue ?? r.total_cost, shares * avgPrice);
+    return {
+      marketTitle: s(r.title ?? r.market ?? r.slug, "Untitled market"),
+      outcome: toOutcome(r.outcome),
+      shares,
+      avgPrice,
+      currentPrice,
+      pnl: n(r.cashPnl ?? r.cash_pnl),
+      pnlPercent: n(r.percentPnl ?? r.percent_pnl),
+      totalCost,
+    };
+  });
+
+  // Highest-value current position = the "top bet".
+  const topBet =
+    positions.length > 0
+      ? positions.reduce((best, p) =>
+          p.currentPrice * p.shares > best.currentPrice * best.shares ? p : best,
+        )
+      : null;
+
+  return {
+    positionRows: rows.length,
+    currentValueUsdc: rows.reduce((sum, r) => sum + n(r.currentValue ?? r.current_value), 0),
+    cashPnlUsdc: rows.reduce((sum, r) => sum + n(r.cashPnl ?? r.cash_pnl), 0),
+    positions,
+    topBet,
+  };
+}
+
 export interface NormalizedWhale {
   address: string;
+  name?: string;
   totalPnl: number;
   pnl30d: number;
   pnl7d: number;
-  winRate: number; // 0..100
+  totalVolume: number;
+  leaderRankAll: number;
+  winRate: number;
   wins: number;
   losses: number;
-  totalVolume: number;
+  maxDrawdownUsdc: number;
   activePositionsCount: number;
   openValueUsdc: number;
-  makerSharePct: number;
-  profitFactor: number | null;
-  maxDrawdownUsdc: number;
-  concentrationPct: number | null;
-  observedBehavior: string;
-  leaderRankAll: number | null;
-  riskFlags: string[];
-  scannedAt: string;
+  positions: ApiPosition[];
+  topBet: ApiPosition | null;
 }
 
-function normalizeAudit(record: Json): NormalizedWhale {
-  const leaderboard = obj(record.leaderboard);
-  const all = obj(leaderboard.all);
-  const month = obj(leaderboard.month);
-  const week = obj(leaderboard.week);
-  const open = obj(record.open_positions);
-  const closed = obj(record.closed_positions);
-  const trade = obj(record.trade_sample);
-
-  // Prefer official leaderboard PnL; fall back to closed realized + open cash.
-  const closedRealized = num(closed.realized_pnl_usdc);
-  const openCash = num(open.cash_pnl_usdc);
-  const totalPnl =
-    all.pnl_usdc !== undefined ? num(all.pnl_usdc) : closedRealized + openCash;
-
-  const totalVolume =
-    all.volume_usdc !== undefined
-      ? num(all.volume_usdc)
-      : num(trade.sample_turnover_usdc);
-
-  const profitableRate = num(closed.profitable_row_rate, 0); // 0..1
-  const makerShare = num(trade.maker_share_by_count, 0); // 0..1
-
-  return {
-    address: str(record.wallet),
-    totalPnl,
-    pnl30d: month.pnl_usdc !== undefined ? num(month.pnl_usdc) : 0,
-    pnl7d: week.pnl_usdc !== undefined ? num(week.pnl_usdc) : 0,
-    winRate: profitableRate > 1 ? profitableRate : profitableRate * 100,
-    wins: num(closed.winning_rows),
-    losses: num(closed.losing_rows),
-    totalVolume,
-    activePositionsCount: num(open.position_rows),
-    openValueUsdc: num(open.current_value_usdc),
-    makerSharePct: makerShare > 1 ? makerShare : makerShare * 100,
-    profitFactor:
-      closed.profit_factor === null || closed.profit_factor === undefined
-        ? null
-        : num(closed.profit_factor),
-    maxDrawdownUsdc: num(closed.max_drawdown_closed_pnl_sequence_usdc),
-    concentrationPct:
-      closed.top_10pct_winners_share_of_gross_profit === null ||
-      closed.top_10pct_winners_share_of_gross_profit === undefined
-        ? null
-        : num(closed.top_10pct_winners_share_of_gross_profit) * 100,
-    observedBehavior: str(trade.observed_behavior),
-    leaderRankAll: all.rank !== undefined ? num(all.rank) : null,
-    riskFlags: Array.isArray(record.risk_flags)
-      ? (record.risk_flags as unknown[]).map((f) => String(f))
-      : [],
-    scannedAt: str(record.scanned_at_iso),
-  };
-}
-
-export const onRequest = async (context: {
-  request: Request;
-  env: Env;
-}): Promise<Response> => {
+export const onRequest = async (context: { env: Env }): Promise<Response> => {
   const { env } = context;
+  const limit = Math.min(Math.max(Number(env.LEADERBOARD_LIMIT ?? "20") || 20, 1), 50);
+  const cacheSeconds = Number(env.WHALES_CACHE_SECONDS ?? "600") || 600;
   const headers: Record<string, string> = {
     "content-type": "application/json",
-    "cache-control": `public, max-age=${CACHE_SECONDS}`,
+    "cache-control": `public, max-age=${cacheSeconds}`,
     "access-control-allow-origin": "*",
   };
 
-  if (!env.APIFY_TOKEN) {
-    return new Response(JSON.stringify({ ok: false, reason: "no_token", whales: [] }), {
-      status: 200,
-      headers,
-    });
-  }
-
-  const actor = env.APIFY_ACTOR || DEFAULT_ACTOR;
-  const url =
-    `https://api.apify.com/v2/acts/${actor}/runs/last/dataset/items` +
-    `?token=${encodeURIComponent(env.APIFY_TOKEN)}&status=SUCCEEDED&clean=true`;
-
   try {
-    const res = await fetch(url, { headers: { accept: "application/json" } });
-    if (!res.ok) {
-      return new Response(
-        JSON.stringify({ ok: false, reason: `apify_${res.status}`, whales: [] }),
-        { status: 200, headers },
-      );
+    // Ranked lists for three horizons in parallel.
+    const [all, month, week] = await Promise.all([
+      leaderboard("ALL", limit),
+      leaderboard("MONTH", limit).catch(() => [] as LeaderRow[]),
+      leaderboard("WEEK", limit).catch(() => [] as LeaderRow[]),
+    ]);
+
+    if (all.length === 0) {
+      return new Response(JSON.stringify({ ok: false, reason: "empty_leaderboard", whales: [] }), {
+        status: 200,
+        headers,
+      });
     }
-    const items = (await res.json()) as unknown;
-    const rows = Array.isArray(items) ? (items as Json[]) : [];
-    const whales = rows
-      .map(normalizeAudit)
-      .filter((w) => w.address.length > 0);
+
+    const monthByWallet = new Map(month.map((r) => [r.wallet, r.pnl]));
+    const weekByWallet = new Map(week.map((r) => [r.wallet, r.pnl]));
+
+    // Per-wallet closed/open stats in parallel (bounded by `limit`).
+    const enriched = await Promise.all(
+      all.map(async (row): Promise<NormalizedWhale> => {
+        const [cs, os] = await Promise.all([closedStats(row.wallet), openStats(row.wallet)]);
+        return {
+          address: row.wallet,
+          name: row.name,
+          totalPnl: row.pnl,
+          pnl30d: monthByWallet.get(row.wallet) ?? 0,
+          pnl7d: weekByWallet.get(row.wallet) ?? 0,
+          totalVolume: row.volume,
+          leaderRankAll: row.rank,
+          winRate: cs.winRate,
+          wins: cs.wins,
+          losses: cs.losses,
+          maxDrawdownUsdc: cs.maxDrawdownUsdc,
+          activePositionsCount: os.positionRows,
+          openValueUsdc: os.currentValueUsdc,
+          positions: os.positions.slice(0, 8),
+          topBet: os.topBet,
+        };
+      }),
+    );
 
     return new Response(
-      JSON.stringify({ ok: true, reason: "live", count: whales.length, whales }),
+      JSON.stringify({ ok: true, reason: "live", count: enriched.length, whales: enriched }),
       { status: 200, headers },
     );
   } catch (err) {

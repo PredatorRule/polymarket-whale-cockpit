@@ -1,5 +1,6 @@
 // src/App.tsx
 import { useState } from "react";
+import { Loader2, AlertTriangle } from "lucide-react";
 import { Header } from "./components/Header";
 import { StatCards } from "./components/StatCards";
 import { FilterBar } from "./components/FilterBar";
@@ -16,54 +17,67 @@ export default function App() {
   const [selected, setSelected] = useState<WhaleTrader | null>(null);
   const [telegramOpen, setTelegramOpen] = useState(false);
 
+  const ready = source === "live" && whales.length > 0;
+
   return (
     <div className="min-h-screen bg-zinc-950 bg-[radial-gradient(ellipse_at_top,rgba(16,185,129,0.05),transparent_55%)]">
       <Header onOpenTelegram={() => setTelegramOpen(true)} />
 
       <main className="mx-auto max-w-7xl space-y-4 px-4 py-6">
-        <StatCards whales={whales} />
+        {source === "loading" && (
+          <div className="flex flex-col items-center justify-center gap-3 py-24 text-zinc-500">
+            <Loader2 className="h-6 w-6 animate-spin text-cyan-400" aria-hidden="true" />
+            <span className="font-mono text-sm">Loading live Polymarket leaderboard…</span>
+          </div>
+        )}
 
-        <FilterBar
-          search={filters.search}
-          onSearch={filters.setSearch}
-          horizon={filters.horizon}
-          onHorizon={filters.setHorizon}
-          category={filters.category}
-          onCategory={filters.setCategory}
-          highPnlOnly={filters.highPnlOnly}
-          onHighPnlOnly={filters.setHighPnlOnly}
-          resultCount={filters.result.length}
-        />
+        {source === "error" && (
+          <div className="flex flex-col items-center justify-center gap-3 py-24 text-center text-zinc-500">
+            <AlertTriangle className="h-6 w-6 text-amber-400" aria-hidden="true" />
+            <span className="font-mono text-sm">Couldn't reach the live Polymarket data feed.</span>
+            <button
+              type="button"
+              onClick={() => window.location.reload()}
+              className="rounded-lg border border-zinc-800 bg-surface px-4 py-2 text-sm text-zinc-300 transition-colors hover:bg-zinc-800"
+            >
+              Retry
+            </button>
+          </div>
+        )}
 
-        <LeaderboardTable
-          whales={filters.result}
-          sort={filters.sort}
-          onSort={filters.toggleSort}
-          onSelect={setSelected}
-          selectedId={selected?.id}
-        />
+        {ready && (
+          <>
+            <StatCards whales={whales} />
 
-        <footer className="flex items-center justify-center gap-2 pt-2 text-center text-xs text-zinc-600">
-          <span
-            className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 font-mono ${
-              source === "live"
-                ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
-                : "border-zinc-800 bg-zinc-900/60 text-zinc-500"
-            }`}
-          >
-            <span
-              className={`inline-flex h-1.5 w-1.5 rounded-full ${
-                source === "live" ? "bg-emerald-400" : "bg-zinc-600"
-              }`}
+            <FilterBar
+              search={filters.search}
+              onSearch={filters.setSearch}
+              horizon={filters.horizon}
+              onHorizon={filters.setHorizon}
+              category={filters.category}
+              onCategory={filters.setCategory}
+              highPnlOnly={filters.highPnlOnly}
+              onHighPnlOnly={filters.setHighPnlOnly}
+              resultCount={filters.result.length}
             />
-            {source === "live"
-              ? "Live Apify data"
-              : source === "loading"
-                ? "Loading…"
-                : "Demo data"}
-          </span>
-          <span>Not financial advice.</span>
-        </footer>
+
+            <LeaderboardTable
+              whales={filters.result}
+              sort={filters.sort}
+              onSort={filters.toggleSort}
+              onSelect={setSelected}
+              selectedId={selected?.id}
+            />
+
+            <footer className="flex items-center justify-center gap-2 pt-2 text-center text-xs text-zinc-600">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 font-mono text-emerald-400">
+                <span className="inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                Live · Polymarket public data
+              </span>
+              <span>Not financial advice.</span>
+            </footer>
+          </>
+        )}
       </main>
 
       <WhaleDrawer

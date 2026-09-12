@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://polymarket-whale-cockpit.pages.dev/sitemap.xml

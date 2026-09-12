@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>FAQ — Polymarket Whale Tracker | How the Leaderboard Works</title>
+    <meta
+      name="description"
+      content="How the Polymarket whale leaderboard works: where the PnL, win rate, and position data come from, what a whale is, whether copy-trading works, and how the real-time Telegram alerts are delivered."
+    />
+    <meta
+      name="keywords"
+      content="polymarket whale tracker faq, how to track polymarket wallets, polymarket copy trading, polymarket smart money, polymarket leaderboard explained"
+    />
+    <link rel="canonical" href="https://polymarket-whale-cockpit.pages.dev/faq" />
+    <meta property="og:title" content="FAQ — Polymarket Whale Tracker" />
+    <meta property="og:description" content="How the Polymarket whale leaderboard and real-time alerts work." />
+    <meta property="og:type" content="article" />
+    <meta property="og:url" content="https://polymarket-whale-cockpit.pages.dev/faq" />
+    <meta property="og:image" content="https://polymarket-whale-cockpit.pages.dev/og-image.png" />
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "Where does the whale leaderboard data come from?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Every number is derived from Polymarket's public on-chain data: the public leaderboard endpoint for ranked PnL and volume, and public position endpoints for win rate, wins/losses, drawdown, and open positions. No private keys, logins, or paid APIs are used."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "What counts as a whale on Polymarket?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "There is no official threshold. In this tracker a whale is a top-ranked wallet by realized PnL or a wallet with large volume and open position value. The badges label wallets with over $100k volume and top leaderboard ranks."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Can I copy-trade these wallets?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "You can use the data as research, but copying is not risk-free. A high historical PnL does not guarantee future results, maker fills depend on queue position and are not reproducible by buying later, and a taker entry may already have moved the market. Treat every wallet as a lead to verify, not a signal to blindly follow."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Is the tracker free?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes. The leaderboard, win rates, and position summaries are free and require no login. Optional real-time Telegram alerts for new whale trades are a paid subscription."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "How fast are the real-time whale alerts?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "The optional Telegram feed pushes a notification within a few seconds of a tracked wallet's trade being confirmed on-chain, including market, side, price, and size, plus a direct link to the market."
+            }
+          }
+        ]
+      }
+    </script>
+
+    <style>
+      :root { color-scheme: dark; }
+      * { box-sizing: border-box; }
+      body { margin: 0; background: #09090b; color: #e4e4e7; font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; line-height: 1.65; }
+      .wrap { max-width: 760px; margin: 0 auto; padding: 48px 20px 96px; }
+      a { color: #38bdf8; text-decoration: none; }
+      a:hover { text-decoration: underline; }
+      h1 { font-size: 1.9rem; line-height: 1.2; margin: 0 0 8px; color: #fafafa; }
+      h2 { font-size: 1.15rem; margin: 32px 0 8px; color: #fafafa; }
+      p, li { color: #a1a1aa; }
+      code { font-family: ui-monospace, "SF Mono", Menlo, monospace; color: #e4e4e7; }
+      .lede { font-size: 1.05rem; color: #d4d4d8; }
+      .eyebrow { font-family: ui-monospace, monospace; font-size: 0.72rem; letter-spacing: 0.2em; text-transform: uppercase; color: #34d399; }
+      .card { background: rgba(18,18,21,0.9); border: 1px solid #27272a; border-radius: 12px; padding: 16px 20px; margin: 24px 0; }
+      .cta { display: inline-block; margin: 6px 8px 6px 0; padding: 10px 16px; border-radius: 10px; border: 1px solid #27272a; background: #121215; color: #e4e4e7; font-size: 0.9rem; }
+      .cta.primary { background: #06b6d4; color: #06202a; border-color: #06b6d4; font-weight: 600; }
+      nav.crumbs { font-size: 0.85rem; margin-bottom: 24px; color: #52525b; }
+      footer { margin-top: 64px; padding-top: 24px; border-top: 1px solid #27272a; font-size: 0.85rem; color: #52525b; }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <nav class="crumbs"><a href="/">Polymarket Whale Cockpit</a> / FAQ</nav>
+
+      <span class="eyebrow">Frequently asked</span>
+      <h1>Polymarket Whale Tracker FAQ</h1>
+      <p class="lede">
+        How the live leaderboard is built, what the numbers mean, and how the
+        optional real-time alerts work.
+      </p>
+
+      <h2>Where does the whale leaderboard data come from?</h2>
+      <p>
+        Every number is derived from Polymarket's <strong>public on-chain
+        data</strong>: the public leaderboard for ranked PnL and volume, and
+        public position endpoints for win rate, wins/losses, drawdown, and open
+        positions. No private keys, no logins, no paid APIs.
+      </p>
+
+      <h2>What counts as a whale?</h2>
+      <p>
+        There is no official threshold. Here a whale is a top-ranked wallet by
+        realized PnL, or one with large volume and open-position value. Badges
+        flag wallets over <code>$100k</code> volume and top leaderboard ranks.
+      </p>
+
+      <h2>Can I copy-trade these wallets?</h2>
+      <p>
+        Use the data as research, not gospel. High historical PnL does not
+        guarantee future results; maker fills depend on queue position and are
+        not reproducible by buying later; a taker entry may already have moved
+        the market. Treat every wallet as a lead to verify.
+      </p>
+
+      <h2>Is the tracker free?</h2>
+      <p>
+        Yes — the leaderboard, win rates, and position summaries are free with no
+        login. Optional real-time Telegram alerts for new whale trades are a paid
+        subscription.
+      </p>
+
+      <h2>How fast are the real-time alerts?</h2>
+      <p>
+        The optional Telegram feed pushes a notification within a few seconds of a
+        tracked wallet's trade confirming on-chain — market, side, price, size,
+        and a direct market link.
+      </p>
+
+      <div class="card">
+        <a class="cta primary" href="/">Open the live leaderboard</a>
+        <a class="cta" href="/how-it-works">How it works</a>
+      </div>
+
+      <footer>
+        Independent tool, not affiliated with Polymarket. Educational information
+        only; not financial advice. &middot; <a href="/">Back to the tracker</a>
+      </footer>
+    </div>
+  </body>
+</html>

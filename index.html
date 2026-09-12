@@ -3,14 +3,56 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Polymarket Whale Cockpit — Live Wallet Leaderboard &amp; Tracker</title>
+    <title>Polymarket Whale Tracker — Live Wallet PnL Leaderboard</title>
     <meta
       name="description"
-      content="Track the most profitable Polymarket wallets: live PnL leaderboard, win rates, volume, and whale positions. Real-time signals via Telegram."
+      content="Live leaderboard of the most profitable Polymarket wallets: real PnL, win rates, volume, drawdown, and open positions from public on-chain data. Free, no login."
     />
+    <meta
+      name="keywords"
+      content="polymarket whale tracker, polymarket leaderboard, polymarket wallet pnl, polymarket smart money, polymarket copy trading, prediction market whales"
+    />
+    <link rel="canonical" href="https://polymarket-whale-cockpit.pages.dev/" />
+
+    <!-- OpenGraph -->
+    <meta property="og:title" content="Polymarket Whale Tracker — Live Wallet PnL Leaderboard" />
+    <meta
+      property="og:description"
+      content="Live leaderboard of the most profitable Polymarket wallets: PnL, win rate, volume, and open positions from public on-chain data. Free, no login."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://polymarket-whale-cockpit.pages.dev/" />
+    <meta property="og:image" content="https://polymarket-whale-cockpit.pages.dev/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Polymarket Whale Tracker — Live Wallet PnL Leaderboard" />
+    <meta
+      name="twitter:description"
+      content="Track the most profitable Polymarket wallets in real time: PnL, win rate, volume, and open positions from public data."
+    />
+    <meta name="twitter:image" content="https://polymarket-whale-cockpit.pages.dev/og-image.png" />
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "Polymarket Whale Cockpit",
+        "url": "https://polymarket-whale-cockpit.pages.dev/",
+        "applicationCategory": "FinanceApplication",
+        "operatingSystem": "All",
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+        "description": "Live leaderboard and tracker of the most profitable Polymarket wallets, built from public on-chain leaderboard and position data: PnL, win rate, volume, drawdown, and open positions."
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <!-- Cloudflare Web Analytics: add THIS site's own beacon token here.
+         Do NOT reuse another site's token — it would mix traffic stats.
+    <script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "YOUR_SITE_TOKEN"}'></script> -->
   </body>
 </html>
