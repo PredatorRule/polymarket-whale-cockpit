@@ -7,6 +7,7 @@ export interface Env {
   // Vars (wrangler.toml).
   WATCH_WALLETS?: string;
   MIN_NOTIONAL_USD?: string;
+  MAX_ALERTS_PER_RUN?: string;
   LOOKBACK_MINUTES?: string;
   // KV binding for dedupe state.
   ALERT_STATE: KVNamespace;

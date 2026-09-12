@@ -17,6 +17,8 @@ WATCH_WALLETS = ""
 MIN_NOTIONAL_USD = "5000"
 # Lookback window (minutes) each run scans for new trades.
 LOOKBACK_MINUTES = "30"
+# Max Telegram messages per run (rate-limit guard; cap 20).
+MAX_ALERTS_PER_RUN = "8"
 
 # Persistent dedupe state so the same trade is never alerted twice.
 [[kv_namespaces]]

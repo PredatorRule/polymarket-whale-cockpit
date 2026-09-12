@@ -45,14 +45,28 @@ export async function runAlerts(env: Env): Promise<{ scanned: number; alerts: nu
       return [] as WhaleTrade[];
     });
   }
-  candidates = candidates.sort((a, b) => a.timestamp - b.timestamp);
+  // Newest first so that when we hit the per-run cap we deliver the most
+  // recent movements, not the oldest.
+  candidates = candidates.sort((a, b) => b.timestamp - a.timestamp);
+
+  // Cap sends per run to stay under Telegram's per-channel rate limit
+  // (~20 msg/min) and avoid a flood on the first run against a cold cache.
+  const maxPerRun = Math.min(Math.max(Number(env.MAX_ALERTS_PER_RUN ?? "8") || 8, 1), 20);
 
   let alerts = 0;
+  let dispatched = 0;
   for (const trade of candidates) {
     const key = `sent:${trade.id}`;
     // Skip if we've already delivered this exact trade.
     const seen = await env.ALERT_STATE.get(key);
     if (seen) continue;
+
+    // Per-run budget reached: mark remaining as seen (so we don't backfill a
+    // burst later) without sending, and stop dispatching this run.
+    if (dispatched >= maxPerRun) {
+      await env.ALERT_STATE.put(key, "1", { expirationTtl: DEDUPE_TTL_SECONDS });
+      continue;
+    }
 
     const result = await sendTelegramMessage(
       env.TELEGRAM_BOT_TOKEN,
@@ -64,6 +78,7 @@ export async function runAlerts(env: Env): Promise<{ scanned: number; alerts: nu
       // Only mark delivered on success, so a failed send retries next run.
       await env.ALERT_STATE.put(key, "1", { expirationTtl: DEDUPE_TTL_SECONDS });
       alerts++;
+      dispatched++;
     } else {
       console.error(`telegram send failed (${result.status}): ${result.error}`);
     }
