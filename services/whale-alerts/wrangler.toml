@@ -15,9 +15,9 @@ crons = ["*/5 * * * *"]
 WATCH_WALLETS = ""
 TOP_N = "10"
 # Only alert on trades at or above this USD notional.
-MIN_NOTIONAL_USD = "10000"
+MIN_NOTIONAL_USD = "5000"
 # Lookback window (minutes) each run scans for new trades.
-LOOKBACK_MINUTES = "10"
+LOOKBACK_MINUTES = "30"
 
 # Persistent dedupe state so the same trade is never alerted twice.
 [[kv_namespaces]]
