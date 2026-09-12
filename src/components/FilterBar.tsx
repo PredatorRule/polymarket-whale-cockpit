@@ -19,6 +19,7 @@ const CATEGORIES: CategoryFilter[] = [
   "Crypto",
   "Sports",
   "Pop Culture",
+  "Other",
 ];
 
 const CATEGORY_LABEL: Record<CategoryFilter, string> = {
@@ -28,6 +29,7 @@ const CATEGORY_LABEL: Record<CategoryFilter, string> = {
   Crypto: "Crypto",
   Sports: "Sports",
   "Pop Culture": "Pop Culture",
+  Other: "Other",
 };
 
 interface Props {

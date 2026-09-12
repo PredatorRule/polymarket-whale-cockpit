@@ -3,7 +3,7 @@
 
 export type Outcome = "YES" | "NO";
 
-export type WhaleCategory = "Politics" | "Macro" | "Crypto" | "Sports" | "Pop Culture";
+export type WhaleCategory = "Politics" | "Macro" | "Crypto" | "Sports" | "Pop Culture" | "Other";
 
 export interface WhalePosition {
   id: string;

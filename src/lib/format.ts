@@ -1,10 +1,11 @@
 // src/lib/format.ts
 // Clean formatters for currency, addresses, percentages, and timestamps.
 
-/** Compact currency: $4.2M, $310K, $1,240. Sign-aware. */
+/** Compact currency: $1.85B, $4.2M, $310K, $1,240. Sign-aware. */
 export function formatCompactUsd(value: number): string {
   const sign = value < 0 ? "-" : "";
   const abs = Math.abs(value);
+  if (abs >= 1_000_000_000) return `${sign}$${(abs / 1_000_000_000).toFixed(2)}B`;
   if (abs >= 1_000_000) return `${sign}$${(abs / 1_000_000).toFixed(abs >= 10_000_000 ? 1 : 2)}M`;
   if (abs >= 1_000) return `${sign}$${(abs / 1_000).toFixed(abs >= 100_000 ? 0 : 1)}K`;
   return `${sign}$${abs.toFixed(0)}`;

@@ -42,8 +42,6 @@ interface ApiResponse {
   whales: ApiWhale[];
 }
 
-const CATEGORIES: WhaleCategory[] = ["Politics", "Macro", "Crypto", "Sports", "Pop Culture"];
-
 // Keyword → category classification from the real market titles. Order matters:
 // the first matching category wins, so Sports (very common on Polymarket) and
 // Crypto are checked before the broader buckets.
@@ -61,15 +59,13 @@ const CATEGORY_KEYWORDS: { category: WhaleCategory; words: string[] }[] = [
   { category: "Pop Culture", words: ["movie", "oscar", "album", "box office", "grammy", "show", "celebrity", "award", "streaming", "spotify", "netflix"] },
 ];
 
-/** Classify from real position titles; fallback deterministic by address. */
+/** Classify from real position titles; unmatched titles are honestly "Other". */
 function classify(w: ApiWhale): WhaleCategory {
   const hay = w.positions.map((p) => p.marketTitle.toLowerCase()).join(" ");
   for (const { category, words } of CATEGORY_KEYWORDS) {
     if (words.some((word) => hay.includes(word))) return category;
   }
-  let h = 0;
-  for (let i = 0; i < w.address.length; i++) h = (h * 31 + w.address.charCodeAt(i)) >>> 0;
-  return CATEGORIES[h % CATEGORIES.length];
+  return "Other";
 }
 
 /** Badges from REAL leaderboard + closed-position metrics. */

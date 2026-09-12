@@ -151,7 +151,7 @@ export function LeaderboardTable({
               <th className="px-4 py-3">
                 <SortHeader label="Win Rate" column="winRate" sort={sort} onSort={onSort} />
               </th>
-              <th className="px-4 py-3 text-right">
+              <th className="w-28 px-4 py-3 text-right">
                 <SortHeader
                   label="Volume"
                   column="totalVolume"
@@ -255,8 +255,8 @@ export function LeaderboardTable({
                   </td>
 
                   {/* Volume */}
-                  <td className="px-4 py-3 text-right">
-                    <span className="font-mono text-sm tabular-nums text-zinc-300">
+                  <td className="w-28 px-4 py-3 text-right">
+                    <span className="whitespace-nowrap font-mono text-sm tabular-nums text-zinc-300">
                       {formatCompactUsd(w.totalVolume)}
                     </span>
                   </td>

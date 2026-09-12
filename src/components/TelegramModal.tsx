@@ -3,8 +3,8 @@ import { useEffect } from "react";
 import { X, Check, Zap, Bell, ShieldCheck, Link2, Send } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
-// Configurable checkout/invite URL (Whop, Stripe, or Telegram invite).
-const CHECKOUT_URL = "https://whop.com/";
+// Stripe Checkout link for the $29/mo subscription.
+const CHECKOUT_URL = "https://buy.stripe.com/aFadR12WXeU26jh9h84ko00";
 
 interface ValueProp {
   icon: LucideIcon;
