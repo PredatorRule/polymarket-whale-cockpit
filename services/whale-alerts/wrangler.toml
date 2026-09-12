@@ -22,7 +22,7 @@ LOOKBACK_MINUTES = "10"
 # Persistent dedupe state so the same trade is never alerted twice.
 [[kv_namespaces]]
 binding = "ALERT_STATE"
-id = "REPLACE_WITH_KV_NAMESPACE_ID"
+id = "086ab9064f3c4d649a392b83c86d76bf"
 
 [observability]
 enabled = true
