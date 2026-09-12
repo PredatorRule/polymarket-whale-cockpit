@@ -73,6 +73,44 @@ export async function runAlerts(env: Env): Promise<{ scanned: number; alerts: nu
   return { scanned: candidates.length, alerts };
 }
 
+/** Non-dispatching diagnostic: shows what the feed actually returns. */
+async function debugScan(env: Env): Promise<Record<string, unknown>> {
+  const minNotional = Number(env.MIN_NOTIONAL_USD ?? "5000") || 5000;
+  const lookbackMin = Number(env.LOOKBACK_MINUTES ?? "30") || 30;
+  const sinceTs = Math.floor(Date.now() / 1000) - lookbackMin * 60;
+  const wallets = await resolveWatchlist(env);
+
+  const perWallet = await Promise.all(
+    wallets.map(async (w) => {
+      // Raw recent trades (no notional/time filter) for visibility.
+      let rawCount = 0;
+      try {
+        const res = await fetch(
+          `https://data-api.polymarket.com/trades?user=${w}&limit=100&takerOnly=false`,
+          { headers: { accept: "application/json", "user-agent": "whale-alerts/1.0" } },
+        );
+        if (res.ok) {
+          const rows = (await res.json()) as unknown;
+          rawCount = Array.isArray(rows) ? rows.length : 0;
+        }
+      } catch {
+        rawCount = -1; // fetch failed
+      }
+      const qualified = await fetchRecentTrades(w, sinceTs, minNotional);
+      return { wallet: w, rawRecentTrades: rawCount, qualified: qualified.length };
+    }),
+  );
+
+  return {
+    secretsConfigured: Boolean(env.TELEGRAM_BOT_TOKEN && env.TELEGRAM_CHAT_ID),
+    walletCount: wallets.length,
+    minNotionalUsd: minNotional,
+    lookbackMinutes: lookbackMin,
+    sinceTs,
+    perWallet,
+  };
+}
+
 export default {
   async scheduled(_event: ScheduledEvent, env: Env, ctx: ExecutionContext): Promise<void> {
     ctx.waitUntil(
@@ -83,7 +121,16 @@ export default {
   },
 
   // Manual trigger for testing: GET the worker URL to run a scan on demand.
-  async fetch(_req: Request, env: Env): Promise<Response> {
+  // Add ?debug=1 to see the resolved watchlist + raw candidate counts (no
+  // Telegram dispatch), which helps diagnose an empty feed vs a quiet window.
+  async fetch(req: Request, env: Env): Promise<Response> {
+    const url = new URL(req.url);
+    if (url.searchParams.get("debug") === "1") {
+      const diag = await debugScan(env);
+      return new Response(JSON.stringify(diag, null, 2), {
+        headers: { "content-type": "application/json" },
+      });
+    }
     const result = await runAlerts(env);
     return new Response(JSON.stringify(result), {
       headers: { "content-type": "application/json" },

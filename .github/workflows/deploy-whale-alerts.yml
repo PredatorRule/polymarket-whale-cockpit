@@ -1,0 +1,39 @@
+name: Deploy whale-alerts worker
+
+# Auto-deploys the whale-alerts Cloudflare Worker on pushes that touch it.
+# Requires a repo secret CLOUDFLARE_API_TOKEN with:
+#   Account → Workers Scripts → Edit
+#   Account → Workers KV Storage → Edit
+#   Account → Account Settings → Read   (membership lookup)
+#   User → Memberships → Read
+# and repo secret CLOUDFLARE_ACCOUNT_ID.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "services/whale-alerts/**"
+      - ".github/workflows/deploy-whale-alerts.yml"
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/whale-alerts
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install dependencies
+        run: npm ci
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Test
+        run: npm test
+      - name: Deploy
+        run: npx wrangler deploy --config wrangler.toml
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
