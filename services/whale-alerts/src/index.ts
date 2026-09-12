@@ -80,9 +80,34 @@ async function debugScan(env: Env): Promise<Record<string, unknown>> {
   const sinceTs = Math.floor(Date.now() / 1000) - lookbackMin * 60;
   const wallets = await resolveWatchlist(env);
 
+  // Sample the first wallet's newest raw trade so we can see the real field
+  // names/units the Polymarket API returns (diagnoses mapping vs quiet window).
+  let sampleRawTrade: unknown = null;
+  let sampleNewestTs = 0;
+  let sampleMaxNotional = 0;
+  try {
+    const res = await fetch(
+      `https://data-api.polymarket.com/trades?user=${wallets[0]}&limit=100&takerOnly=false`,
+      { headers: { accept: "application/json", "user-agent": "whale-alerts/1.0" } },
+    );
+    if (res.ok) {
+      const rows = (await res.json()) as Record<string, unknown>[];
+      if (Array.isArray(rows) && rows.length > 0) {
+        sampleRawTrade = rows[0];
+        for (const r of rows) {
+          const ts = Number(r.timestamp) || 0;
+          if (ts > sampleNewestTs) sampleNewestTs = ts;
+          const notional = (Number(r.price) || 0) * (Number(r.size) || 0);
+          if (notional > sampleMaxNotional) sampleMaxNotional = notional;
+        }
+      }
+    }
+  } catch {
+    sampleRawTrade = "fetch_failed";
+  }
+
   const perWallet = await Promise.all(
     wallets.map(async (w) => {
-      // Raw recent trades (no notional/time filter) for visibility.
       let rawCount = 0;
       try {
         const res = await fetch(
@@ -94,7 +119,7 @@ async function debugScan(env: Env): Promise<Record<string, unknown>> {
           rawCount = Array.isArray(rows) ? rows.length : 0;
         }
       } catch {
-        rawCount = -1; // fetch failed
+        rawCount = -1;
       }
       const qualified = await fetchRecentTrades(w, sinceTs, minNotional);
       return { wallet: w, rawRecentTrades: rawCount, qualified: qualified.length };
@@ -106,7 +131,17 @@ async function debugScan(env: Env): Promise<Record<string, unknown>> {
     walletCount: wallets.length,
     minNotionalUsd: minNotional,
     lookbackMinutes: lookbackMin,
+    nowTs: Math.floor(Date.now() / 1000),
     sinceTs,
+    sample: {
+      newestTradeTs: sampleNewestTs,
+      newestTradeAgeMinutes:
+        sampleNewestTs > 0
+          ? Math.round((Date.now() / 1000 - sampleNewestTs) / 60)
+          : null,
+      maxNotionalInSample: Math.round(sampleMaxNotional),
+      rawTrade: sampleRawTrade,
+    },
     perWallet,
   };
 }
