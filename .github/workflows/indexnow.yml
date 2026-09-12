@@ -1,0 +1,23 @@
+name: IndexNow ping
+
+# Notify IndexNow (Bing, Yandex, et al.) after each push to main. Cloudflare
+# Pages builds/deploys independently on the same push; this waits briefly to
+# let that deploy land, then submits the URLs. No secrets needed — the
+# IndexNow key file is public at the site root.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  indexnow:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Wait for Cloudflare Pages deploy to propagate
+        run: sleep 90
+      - name: Ping IndexNow
+        run: npm run indexnow

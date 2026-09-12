@@ -17,6 +17,7 @@ const CATEGORIES: CategoryFilter[] = [
   "Politics",
   "Macro",
   "Crypto",
+  "Sports",
   "Pop Culture",
 ];
 
@@ -25,6 +26,7 @@ const CATEGORY_LABEL: Record<CategoryFilter, string> = {
   Politics: "Politics",
   Macro: "Macro",
   Crypto: "Crypto",
+  Sports: "Sports",
   "Pop Culture": "Pop Culture",
 };
 
