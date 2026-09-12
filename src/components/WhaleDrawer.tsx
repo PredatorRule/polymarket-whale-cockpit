@@ -255,7 +255,7 @@ export function WhaleDrawer({ whale, onClose, onUnlock }: Props) {
                     className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg bg-cyan-500 px-4 py-2.5 text-sm font-semibold text-zinc-950 transition-colors hover:bg-cyan-400"
                   >
                     <Zap className="h-4 w-4" aria-hidden="true" />
-                    Unlock Instant Whale Feeds ($29/mo)
+                    Unlock Instant Whale Feeds (€29/mo)
                   </button>
                 </div>
               </div>

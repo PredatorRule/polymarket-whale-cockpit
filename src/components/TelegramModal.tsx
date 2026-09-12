@@ -3,8 +3,8 @@ import { useEffect } from "react";
 import { X, Check, Zap, Bell, ShieldCheck, Link2, Send } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
-// Stripe Checkout link for the $29/mo subscription.
-const CHECKOUT_URL = "https://buy.stripe.com/aFadR12WXeU26jh9h84ko00";
+// Stripe Checkout link for the €29/mo subscription.
+const CHECKOUT_URL = "https://buy.stripe.com/eVqdR14115jsgXV64W4ko01";
 
 interface ValueProp {
   icon: LucideIcon;
@@ -95,7 +95,7 @@ export function TelegramModal({
           <div className="mt-2 flex items-end justify-between rounded-xl border border-zinc-800 bg-zinc-900/50 p-4">
             <div>
               <div className="font-mono text-3xl font-bold tabular-nums text-zinc-50">
-                $29
+€29
                 <span className="ml-1 text-sm font-normal text-zinc-500">/ month</span>
               </div>
               <div className="mt-0.5 text-xs text-zinc-500">
