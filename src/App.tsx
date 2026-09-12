@@ -5,6 +5,7 @@ import { Header } from "./components/Header";
 import { StatCards } from "./components/StatCards";
 import { FilterBar } from "./components/FilterBar";
 import { LeaderboardTable } from "./components/LeaderboardTable";
+import { RecentMoves } from "./components/RecentMoves";
 import { WhaleDrawer } from "./components/WhaleDrawer";
 import { TelegramModal } from "./components/TelegramModal";
 import { useWhaleFilters } from "./hooks/useWhaleFilters";
@@ -12,7 +13,7 @@ import { useWhaleData } from "./data/useWhaleData";
 import type { WhaleTrader } from "./types/whale";
 
 export default function App() {
-  const { whales, source } = useWhaleData();
+  const { whales, recentMoves, source, lastUpdated } = useWhaleData();
   const filters = useWhaleFilters(whales);
   const [selected, setSelected] = useState<WhaleTrader | null>(null);
   const [telegramOpen, setTelegramOpen] = useState(false);
@@ -49,6 +50,8 @@ export default function App() {
           <>
             <StatCards whales={whales} />
 
+            <RecentMoves moves={recentMoves} />
+
             <FilterBar
               search={filters.search}
               onSearch={filters.setSearch}
@@ -69,11 +72,16 @@ export default function App() {
               selectedId={selected?.id}
             />
 
-            <footer className="flex items-center justify-center gap-2 pt-2 text-center text-xs text-zinc-600">
+            <footer className="flex flex-wrap items-center justify-center gap-2 pt-2 text-center text-xs text-zinc-600">
               <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 font-mono text-emerald-400">
-                <span className="inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                <span className="inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400 animate-beacon" />
                 Live · Polymarket public data
               </span>
+              {lastUpdated && (
+                <span className="font-mono">
+                  updated {new Date(lastUpdated).toLocaleTimeString()}
+                </span>
+              )}
               <span>Not financial advice.</span>
             </footer>
           </>

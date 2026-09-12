@@ -18,6 +18,7 @@ const DATA_BASE = "https://data-api.polymarket.com";
 interface Env {
   LEADERBOARD_LIMIT?: string;
   WHALES_CACHE_SECONDS?: string;
+  MOVES_MIN_NOTIONAL?: string;
 }
 
 type Json = Record<string, unknown>;
@@ -199,6 +200,63 @@ export interface NormalizedWhale {
   topBet: ApiPosition | null;
 }
 
+export interface RecentMove {
+  wallet: string;
+  name?: string;
+  action: string; // "BOUGHT YES" | "SOLD NO" | ...
+  outcome: "YES" | "NO";
+  title: string;
+  eventUrl: string;
+  notionalUsd: number;
+  priceUsd: number;
+  timestamp: number; // seconds
+}
+
+/**
+ * Live platform-wide large trades — the dynamic "whale movement" feed, same
+ * primitive the alerts worker uses. All-time PnL leaders are often dormant, so
+ * this is what actually makes the page feel live.
+ */
+async function fetchRecentMoves(minNotionalUsd: number, limit: number): Promise<RecentMove[]> {
+  const url =
+    `${DATA_BASE}/trades?limit=${limit}&takerOnly=false` +
+    `&filterType=CASH&filterAmount=${Math.floor(minNotionalUsd)}`;
+  let rows: Json[] = [];
+  try {
+    const payload = (await getJson(url)) as unknown;
+    rows = Array.isArray(payload) ? (payload as Json[]) : [];
+  } catch {
+    return [];
+  }
+
+  const moves: RecentMove[] = [];
+  for (const r of rows) {
+    const wallet = pickS(r, ["proxyWallet", "wallet", "user"]).toLowerCase();
+    const price = pickN(r, ["price"]);
+    const shares = pickN(r, ["size", "shares"]);
+    if (!wallet || price <= 0 || shares <= 0) continue;
+    const notional = price * shares;
+    if (notional < minNotionalUsd) continue;
+    const side = pickS(r, ["side"]).toUpperCase() === "SELL" ? "SELL" : "BUY";
+    const outcome = toOutcome(r.outcome);
+    const eventSlug = pickS(r, ["eventSlug", "slug"]);
+    moves.push({
+      wallet,
+      name: pickS(r, ["name", "pseudonym"]) || undefined,
+      action: side === "SELL" ? `SOLD ${outcome}` : `BOUGHT ${outcome}`,
+      outcome,
+      title: pickS(r, ["title", "market"], "Untitled market"),
+      eventUrl: eventSlug
+        ? `https://polymarket.com/event/${eventSlug}`
+        : `https://polymarket.com/profile/${wallet}`,
+      notionalUsd: notional,
+      priceUsd: price,
+      timestamp: pickN(r, ["timestamp"]),
+    });
+  }
+  return moves.sort((a, b) => b.timestamp - a.timestamp).slice(0, 25);
+}
+
 export const onRequest = async (context: { env: Env }): Promise<Response> => {
   const { env } = context;
   const limit = Math.min(Math.max(Number(env.LEADERBOARD_LIMIT ?? "20") || 20, 1), 50);
@@ -227,32 +285,43 @@ export const onRequest = async (context: { env: Env }): Promise<Response> => {
     const monthByWallet = new Map(month.map((r) => [r.wallet, r.pnl]));
     const weekByWallet = new Map(week.map((r) => [r.wallet, r.pnl]));
 
-    // Per-wallet closed/open stats in parallel (bounded by `limit`).
-    const enriched = await Promise.all(
-      all.map(async (row): Promise<NormalizedWhale> => {
-        const [cs, os] = await Promise.all([closedStats(row.wallet), openStats(row.wallet)]);
-        return {
-          address: row.wallet,
-          name: row.name,
-          totalPnl: row.pnl,
-          pnl30d: monthByWallet.get(row.wallet) ?? 0,
-          pnl7d: weekByWallet.get(row.wallet) ?? 0,
-          totalVolume: row.volume,
-          leaderRankAll: row.rank,
-          winRate: cs.winRate,
-          wins: cs.wins,
-          losses: cs.losses,
-          maxDrawdownUsdc: cs.maxDrawdownUsdc,
-          activePositionsCount: os.positionRows,
-          openValueUsdc: os.currentValueUsdc,
-          positions: os.positions.slice(0, 8),
-          topBet: os.topBet,
-        };
-      }),
-    );
+    const movesMinNotional = Number(env.MOVES_MIN_NOTIONAL ?? "5000") || 5000;
+
+    // Per-wallet stats + the live global moves feed, all in parallel.
+    const [enriched, recentMoves] = await Promise.all([
+      Promise.all(
+        all.map(async (row): Promise<NormalizedWhale> => {
+          const [cs, os] = await Promise.all([closedStats(row.wallet), openStats(row.wallet)]);
+          return {
+            address: row.wallet,
+            name: row.name,
+            totalPnl: row.pnl,
+            pnl30d: monthByWallet.get(row.wallet) ?? 0,
+            pnl7d: weekByWallet.get(row.wallet) ?? 0,
+            totalVolume: row.volume,
+            leaderRankAll: row.rank,
+            winRate: cs.winRate,
+            wins: cs.wins,
+            losses: cs.losses,
+            maxDrawdownUsdc: cs.maxDrawdownUsdc,
+            activePositionsCount: os.positionRows,
+            openValueUsdc: os.currentValueUsdc,
+            positions: os.positions.slice(0, 8),
+            topBet: os.topBet,
+          };
+        }),
+      ),
+      fetchRecentMoves(movesMinNotional, 500),
+    ]);
 
     return new Response(
-      JSON.stringify({ ok: true, reason: "live", count: enriched.length, whales: enriched }),
+      JSON.stringify({
+        ok: true,
+        reason: "live",
+        count: enriched.length,
+        whales: enriched,
+        recentMoves,
+      }),
       { status: 200, headers },
     );
   } catch (err) {

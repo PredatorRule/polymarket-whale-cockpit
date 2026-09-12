@@ -6,6 +6,18 @@ import type { WhaleTrader, WhaleCategory, Outcome, WhalePosition } from "../type
 
 export type DataSource = "live" | "error" | "loading";
 
+export interface RecentMove {
+  wallet: string;
+  name?: string;
+  action: string;
+  outcome: "YES" | "NO";
+  title: string;
+  eventUrl: string;
+  notionalUsd: number;
+  priceUsd: number;
+  timestamp: number;
+}
+
 interface ApiPosition {
   marketTitle: string;
   outcome: "YES" | "NO";
@@ -40,6 +52,7 @@ interface ApiResponse {
   ok: boolean;
   reason: string;
   whales: ApiWhale[];
+  recentMoves?: RecentMove[];
 }
 
 // Keyword → category classification from the real market titles. Order matters:
@@ -140,33 +153,62 @@ function adapt(list: ApiWhale[]): WhaleTrader[] {
   });
 }
 
-export function useWhaleData(): { whales: WhaleTrader[]; source: DataSource } {
+// Auto-refresh interval (ms). The API is edge-cached, so frequent polls are
+// cheap and mostly hit cache; 60s keeps the board feeling live without spam.
+const REFRESH_MS = 60_000;
+
+export function useWhaleData(): {
+  whales: WhaleTrader[];
+  recentMoves: RecentMove[];
+  source: DataSource;
+  lastUpdated: number | null;
+} {
   const [whales, setWhales] = useState<WhaleTrader[]>([]);
+  const [recentMoves, setRecentMoves] = useState<RecentMove[]>([]);
   const [source, setSource] = useState<DataSource>("loading");
+  const [lastUpdated, setLastUpdated] = useState<number | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/whales")
-      .then((r) => (r.ok ? (r.json() as Promise<ApiResponse>) : Promise.reject(new Error("bad status"))))
-      .then((data) => {
+
+    const load = async () => {
+      try {
+        const r = await fetch("/api/whales", { cache: "no-store" });
+        if (!r.ok) throw new Error("bad status");
+        const data = (await r.json()) as ApiResponse;
         if (cancelled) return;
         if (data.ok && data.whales.length > 0) {
           setWhales(adapt(data.whales));
+          setRecentMoves(data.recentMoves ?? []);
           setSource("live");
-        } else {
-          setWhales([]);
+          setLastUpdated(Date.now());
+        } else if (source === "loading") {
+          // Only surface an error if we have nothing to show yet; otherwise
+          // keep the last good data on a transient failure.
           setSource("error");
         }
-      })
-      .catch(() => {
+      } catch {
         if (cancelled) return;
-        setWhales([]);
-        setSource("error");
-      });
+        if (source === "loading") setSource("error");
+      }
+    };
+
+    void load();
+    const id = setInterval(load, REFRESH_MS);
+
+    // Refresh immediately when the tab regains focus.
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void load();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+
     return () => {
       cancelled = true;
+      clearInterval(id);
+      document.removeEventListener("visibilitychange", onVisible);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  return { whales, source };
+  return { whales, recentMoves, source, lastUpdated };
 }
