@@ -6,7 +6,6 @@ export interface Env {
   TELEGRAM_CHAT_ID?: string;
   // Vars (wrangler.toml).
   WATCH_WALLETS?: string;
-  TOP_N?: string;
   MIN_NOTIONAL_USD?: string;
   LOOKBACK_MINUTES?: string;
   // KV binding for dedupe state.

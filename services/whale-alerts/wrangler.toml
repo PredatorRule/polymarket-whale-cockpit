@@ -10,10 +10,9 @@ crons = ["*/5 * * * *"]
 #   wrangler secret put TELEGRAM_BOT_TOKEN
 #   wrangler secret put TELEGRAM_CHAT_ID
 [vars]
-# Comma-separated wallets to monitor. Leave empty to auto-track the live
-# leaderboard's top N wallets.
+# Comma-separated wallets to monitor. Leave empty to track GLOBAL large trades
+# across the whole platform (the real "whale movement" feed).
 WATCH_WALLETS = ""
-TOP_N = "10"
 # Only alert on trades at or above this USD notional.
 MIN_NOTIONAL_USD = "5000"
 # Lookback window (minutes) each run scans for new trades.

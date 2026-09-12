@@ -1,6 +1,6 @@
 // services/whale-alerts/src/index.ts
 import type { Env, WhaleTrade } from "./types";
-import { fetchTopWallets, fetchRecentTrades } from "./feed";
+import { fetchRecentTrades, fetchGlobalWhaleTrades } from "./feed";
 import { formatAlert } from "./format";
 import { sendTelegramMessage } from "./telegram";
 
@@ -11,13 +11,6 @@ function parseWallets(csv: string | undefined): string[] {
     .split(",")
     .map((w) => w.trim().toLowerCase())
     .filter((w) => /^0x[0-9a-f]{40}$/.test(w));
-}
-
-async function resolveWatchlist(env: Env): Promise<string[]> {
-  const explicit = parseWallets(env.WATCH_WALLETS);
-  if (explicit.length > 0) return explicit;
-  const topN = Math.min(Math.max(Number(env.TOP_N ?? "10") || 10, 1), 50);
-  return fetchTopWallets(topN);
 }
 
 /** Core scan: returns how many alerts were dispatched. */
@@ -31,22 +24,28 @@ export async function runAlerts(env: Env): Promise<{ scanned: number; alerts: nu
   const lookbackMin = Number(env.LOOKBACK_MINUTES ?? "10") || 10;
   const sinceTs = Math.floor(Date.now() / 1000) - lookbackMin * 60;
 
-  const wallets = await resolveWatchlist(env);
-  if (wallets.length === 0) {
-    console.error("No wallets to monitor.");
-    return { scanned: 0, alerts: 0 };
+  // If specific wallets are set, monitor those; otherwise track GLOBAL large
+  // trades across the whole platform (the correct "whale movement" feed —
+  // all-time PnL leaders are frequently dormant).
+  const explicit = parseWallets(env.WATCH_WALLETS);
+  let candidates: WhaleTrade[];
+  if (explicit.length > 0) {
+    const perWallet = await Promise.all(
+      explicit.map((w) =>
+        fetchRecentTrades(w, sinceTs, minNotional).catch((e) => {
+          console.error(`trades fetch failed for ${w}:`, e);
+          return [] as WhaleTrade[];
+        }),
+      ),
+    );
+    candidates = perWallet.flat();
+  } else {
+    candidates = await fetchGlobalWhaleTrades(sinceTs, minNotional).catch((e) => {
+      console.error("global whale trades fetch failed:", e);
+      return [] as WhaleTrade[];
+    });
   }
-
-  // Gather candidate trades across all wallets.
-  const perWallet = await Promise.all(
-    wallets.map((w) =>
-      fetchRecentTrades(w, sinceTs, minNotional).catch((e) => {
-        console.error(`trades fetch failed for ${w}:`, e);
-        return [] as WhaleTrade[];
-      }),
-    ),
-  );
-  const candidates = perWallet.flat().sort((a, b) => a.timestamp - b.timestamp);
+  candidates = candidates.sort((a, b) => a.timestamp - b.timestamp);
 
   let alerts = 0;
   for (const trade of candidates) {
@@ -73,76 +72,28 @@ export async function runAlerts(env: Env): Promise<{ scanned: number; alerts: nu
   return { scanned: candidates.length, alerts };
 }
 
-/** Non-dispatching diagnostic: shows what the feed actually returns. */
+/** Non-dispatching diagnostic: shows what the global whale feed returns. */
 async function debugScan(env: Env): Promise<Record<string, unknown>> {
   const minNotional = Number(env.MIN_NOTIONAL_USD ?? "5000") || 5000;
   const lookbackMin = Number(env.LOOKBACK_MINUTES ?? "30") || 30;
   const sinceTs = Math.floor(Date.now() / 1000) - lookbackMin * 60;
-  const wallets = await resolveWatchlist(env);
+  const explicit = parseWallets(env.WATCH_WALLETS);
 
-  // Sample the first wallet's newest raw trade so we can see the real field
-  // names/units the Polymarket API returns (diagnoses mapping vs quiet window).
-  let sampleRawTrade: unknown = null;
-  let sampleNewestTs = 0;
-  let sampleMaxNotional = 0;
-  try {
-    const res = await fetch(
-      `https://data-api.polymarket.com/trades?user=${wallets[0]}&limit=100&takerOnly=false`,
-      { headers: { accept: "application/json", "user-agent": "whale-alerts/1.0" } },
-    );
-    if (res.ok) {
-      const rows = (await res.json()) as Record<string, unknown>[];
-      if (Array.isArray(rows) && rows.length > 0) {
-        sampleRawTrade = rows[0];
-        for (const r of rows) {
-          const ts = Number(r.timestamp) || 0;
-          if (ts > sampleNewestTs) sampleNewestTs = ts;
-          const notional = (Number(r.price) || 0) * (Number(r.size) || 0);
-          if (notional > sampleMaxNotional) sampleMaxNotional = notional;
-        }
-      }
-    }
-  } catch {
-    sampleRawTrade = "fetch_failed";
-  }
-
-  const perWallet = await Promise.all(
-    wallets.map(async (w) => {
-      let rawCount = 0;
-      try {
-        const res = await fetch(
-          `https://data-api.polymarket.com/trades?user=${w}&limit=100&takerOnly=false`,
-          { headers: { accept: "application/json", "user-agent": "whale-alerts/1.0" } },
-        );
-        if (res.ok) {
-          const rows = (await res.json()) as unknown;
-          rawCount = Array.isArray(rows) ? rows.length : 0;
-        }
-      } catch {
-        rawCount = -1;
-      }
-      const qualified = await fetchRecentTrades(w, sinceTs, minNotional);
-      return { wallet: w, rawRecentTrades: rawCount, qualified: qualified.length };
-    }),
-  );
+  const global = await fetchGlobalWhaleTrades(sinceTs, minNotional).catch(() => []);
+  const sample = global
+    .slice(0, 5)
+    .map((t) => ({ wallet: t.wallet, action: t.action, notionalUsd: Math.round(t.notionalUsd), title: t.title, ageMin: Math.round(Date.now() / 1000 - t.timestamp) / 60 }));
 
   return {
     secretsConfigured: Boolean(env.TELEGRAM_BOT_TOKEN && env.TELEGRAM_CHAT_ID),
-    walletCount: wallets.length,
+    mode: explicit.length > 0 ? "watchlist" : "global",
+    watchlistSize: explicit.length,
     minNotionalUsd: minNotional,
     lookbackMinutes: lookbackMin,
     nowTs: Math.floor(Date.now() / 1000),
     sinceTs,
-    sample: {
-      newestTradeTs: sampleNewestTs,
-      newestTradeAgeMinutes:
-        sampleNewestTs > 0
-          ? Math.round((Date.now() / 1000 - sampleNewestTs) / 60)
-          : null,
-      maxNotionalInSample: Math.round(sampleMaxNotional),
-      rawTrade: sampleRawTrade,
-    },
-    perWallet,
+    globalQualified: global.length,
+    sample,
   };
 }
 
