@@ -125,7 +125,7 @@ export default function App() {
               </div>
             )}
 
-            <StatCards whales={filters.result} />
+            <StatCards whales={filters.result} moves={filters.moves} />
 
             <RecentMoves moves={filters.moves} />
 

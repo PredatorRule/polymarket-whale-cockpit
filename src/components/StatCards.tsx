@@ -1,81 +1,87 @@
 // src/components/StatCards.tsx
-import { TrendingUp, Activity, Layers, Target } from "lucide-react";
+import { TrendingUp, Zap, Layers, Target } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { WhaleTrader } from "../types/whale";
+import type { RecentMove } from "../data/useWhaleData";
 import { formatSignedUsd, formatCompactUsd, formatPercent } from "../lib/format";
 import { OutcomePill } from "./Badge";
 
 interface Kpi {
   label: string;
   value: string;
+  valueClass: string;
   icon: LucideIcon;
-  accent: string;
-  trend: string;
-  trendUp: boolean;
-  extra?: { title: string; outcome: "YES" | "NO" };
+  sub: string;
+  outcome?: "YES" | "NO";
 }
 
-export function StatCards({ whales }: { whales: WhaleTrader[] }) {
+export function StatCards({
+  whales,
+  moves,
+}: {
+  whales: WhaleTrader[];
+  moves: RecentMove[];
+}) {
   // Guard: the filtered set can be empty (e.g. a search with no matches).
   if (whales.length === 0) return null;
 
-  // Top whale 30d PnL.
-  const topWhale30d = whales.reduce(
-    (best, w) => (w.pnl30d > best ? w.pnl30d : best),
-    Number.NEGATIVE_INFINITY,
-  );
+  // 1. Combined PnL across the shown wallets — a real aggregate.
+  const combinedPnl = whales.reduce((sum, w) => sum + w.totalPnl, 0);
 
-  // Tracked 24h volume proxy: ~1.8% of aggregate tracked volume moves per day.
-  const trackedVolume = whales.reduce((sum, w) => sum + w.totalVolume, 0);
-  const volume24h = trackedVolume * 0.018;
+  // 2. Biggest LIVE move from the real trades feed (ties the header to activity).
+  const biggestMove =
+    moves.length > 0
+      ? moves.reduce((best, m) => (m.notionalUsd > best.notionalUsd ? m : best))
+      : null;
 
-  // Largest active stake across the (filtered) wallets.
+  // 3. Largest active stake across the shown wallets — real open position.
   const largestBet = whales.reduce(
     (best, w) => (w.currentTopBet.amount > best.currentTopBet.amount ? w : best),
     whales[0],
   );
 
-  // Average win-rate across top 10 by rank.
-  const top10 = [...whales].sort((a, b) => a.rank - b.rank).slice(0, 10);
+  // 4. Average win rate across the shown wallets — real.
   const avgWinRate =
-    top10.reduce((sum, w) => sum + w.winRate, 0) / Math.max(top10.length, 1);
+    whales.reduce((sum, w) => sum + w.winRate, 0) / whales.length;
 
   const kpis: Kpi[] = [
     {
-      label: "Top Whale 30d PnL",
-      value: formatSignedUsd(topWhale30d),
+      label: "Combined Tracked PnL",
+      value: formatSignedUsd(combinedPnl),
+      valueClass: combinedPnl >= 0 ? "text-emerald-400" : "text-rose-400",
       icon: TrendingUp,
-      accent: "text-emerald-400",
-      trend: "+18.2% vs prior 30d",
-      trendUp: true,
+      sub: `across ${whales.length} wallet${whales.length === 1 ? "" : "s"}`,
     },
-    {
-      label: "Tracked 24h Volume",
-      value: formatCompactUsd(volume24h),
-      icon: Activity,
-      accent: "text-cyan-300",
-      trend: "+6.4% day-over-day",
-      trendUp: true,
-    },
+    biggestMove
+      ? {
+          label: "Biggest Live Move",
+          value: formatCompactUsd(biggestMove.notionalUsd),
+          valueClass: "text-cyan-300",
+          icon: Zap,
+          sub: biggestMove.title,
+          outcome: biggestMove.outcome,
+        }
+      : {
+          label: "Live Moves",
+          value: `${moves.length}`,
+          valueClass: "text-cyan-300",
+          icon: Zap,
+          sub: "large trades in feed",
+        },
     {
       label: "Largest Active Stake",
       value: formatCompactUsd(largestBet.currentTopBet.amount),
+      valueClass: "text-amber-400",
       icon: Layers,
-      accent: "text-amber-400",
-      trend: largestBet.currentTopBet.marketTitle,
-      trendUp: true,
-      extra: {
-        title: largestBet.currentTopBet.marketTitle,
-        outcome: largestBet.currentTopBet.outcome,
-      },
+      sub: largestBet.currentTopBet.marketTitle,
+      outcome: largestBet.currentTopBet.outcome,
     },
     {
-      label: "Active Whale Win-Rate",
+      label: "Avg Win Rate (shown)",
       value: formatPercent(avgWinRate),
+      valueClass: "text-emerald-400",
       icon: Target,
-      accent: "text-emerald-400",
-      trend: "Top 10 tracked wallets",
-      trendUp: true,
+      sub: `${whales.length} wallet${whales.length === 1 ? "" : "s"} in view`,
     },
   ];
 
@@ -90,26 +96,16 @@ export function StatCards({ whales }: { whales: WhaleTrader[] }) {
             <span className="text-xs font-medium uppercase tracking-wide text-zinc-500">
               {k.label}
             </span>
-            <k.icon className={`h-4 w-4 ${k.accent}`} aria-hidden="true" />
+            <k.icon className={`h-4 w-4 ${k.valueClass}`} aria-hidden="true" />
           </div>
-          <div className={`mt-2 font-mono text-2xl font-bold tabular-nums ${k.accent}`}>
+          <div className={`mt-2 font-mono text-2xl font-bold tabular-nums ${k.valueClass}`}>
             {k.value}
           </div>
           <div className="mt-1 flex items-center gap-1.5">
-            {k.extra ? (
-              <>
-                <OutcomePill outcome={k.extra.outcome} />
-                <span className="truncate text-xs text-zinc-500" title={k.extra.title}>
-                  {k.extra.title}
-                </span>
-              </>
-            ) : (
-              <span
-                className={`text-xs ${k.trendUp ? "text-emerald-500/80" : "text-rose-400"}`}
-              >
-                {k.trend}
-              </span>
-            )}
+            {k.outcome && <OutcomePill outcome={k.outcome} />}
+            <span className="truncate text-xs text-zinc-500" title={k.sub}>
+              {k.sub}
+            </span>
           </div>
         </div>
       ))}
