@@ -2,9 +2,10 @@ name = "whale-alerts"
 main = "src/index.ts"
 compatibility_date = "2026-09-11"
 
-# Poll for new whale trades every 5 minutes (Workers Free Tier friendly).
+# Poll for new whale trades every 2 minutes. One KV put/run (high-water-mark),
+# so ~720 puts/day — safely under the free-tier 1000/day limit.
 [triggers]
-crons = ["*/5 * * * *"]
+crons = ["*/2 * * * *"]
 
 # Non-secret defaults. Secrets are set separately (NEVER committed):
 #   wrangler secret put TELEGRAM_BOT_TOKEN
@@ -15,8 +16,9 @@ crons = ["*/5 * * * *"]
 WATCH_WALLETS = ""
 # Only alert on trades at or above this USD notional.
 MIN_NOTIONAL_USD = "5000"
-# Lookback window (minutes) each run scans for new trades.
-LOOKBACK_MINUTES = "30"
+# Lookback window (minutes) each run scans for new trades. Comfortably larger
+# than the 2-minute cron so nothing slips between runs.
+LOOKBACK_MINUTES = "10"
 # Max Telegram messages per run (rate-limit guard; cap 20).
 MAX_ALERTS_PER_RUN = "8"
 

@@ -21,11 +21,24 @@ export const CATEGORY_KEYWORDS: { category: WhaleCategory; words: string[] }[] =
   { category: "Pop Culture", words: ["movie", "oscar", "album", "box office", "grammy", "show", "celebrity", "award", "streaming", "spotify", "netflix"] },
 ];
 
+// Compile one regex per keyword list. Short keywords (<= 4 chars, e.g. eth,
+// sol, fc, cf, oil) require BOTH word boundaries so they don't match inside
+// unrelated words like "som(eth)ing". Longer keywords only need a leading
+// boundary, so "oscar" still matches "oscars", "election" matches "elections".
+const escapeRe = (w: string) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const COMPILED = CATEGORY_KEYWORDS.map(({ category, words }) => {
+  const parts = words.map((w) => {
+    const e = escapeRe(w);
+    return w.length <= 4 ? `\\b${e}\\b` : `\\b${e}`;
+  });
+  return { category, re: new RegExp(`(?:${parts.join("|")})`, "i") };
+});
+
 /** Classify one or more market titles into a category; unmatched → "Other". */
 export function classifyTitles(titles: string[]): WhaleCategory {
-  const hay = titles.join(" ").toLowerCase();
-  for (const { category, words } of CATEGORY_KEYWORDS) {
-    if (words.some((word) => hay.includes(word))) return category;
+  const hay = titles.join(" ");
+  for (const { category, re } of COMPILED) {
+    if (re.test(hay)) return category;
   }
   return "Other";
 }

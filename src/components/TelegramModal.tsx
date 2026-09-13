@@ -14,19 +14,19 @@ interface ValueProp {
 const VALUE_PROPS: ValueProp[] = [
   {
     icon: Bell,
-    text: "Instant push notification via Telegram within 3 seconds of blockchain confirmation.",
+    text: "Telegram push alerts within about a minute of a whale's on-chain fill.",
   },
   {
     icon: Zap,
-    text: "Exact entry price, slippage estimate, and a direct one-click trade link.",
+    text: "Each alert shows the market, side, exact size, price, and a direct market link.",
   },
   {
     icon: ShieldCheck,
-    text: "Automated wallet risk scoring and track-record auditing.",
+    text: "Filtered to large trades ($5k+) so you only see moves that matter.",
   },
   {
     icon: Link2,
-    text: "Zero human involvement: instant private link delivery via Whop.",
+    text: "Automated delivery — instant private channel access after checkout.",
   },
 ];
 
@@ -78,7 +78,7 @@ export function TelegramModal({
             Never Miss a $100k Whale Move Again
           </h2>
           <p className="mt-1 text-sm text-zinc-400">
-            Real-time alerts the instant a tracked wallet fills a position.
+            Get a Telegram alert within about a minute of a whale's large on-chain fill.
           </p>
         </div>
 

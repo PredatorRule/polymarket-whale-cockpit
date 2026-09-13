@@ -301,9 +301,9 @@ export function WhaleDrawer({ whale, onClose, onUnlock, isWatched, onToggleWatch
                 {/* Conversion banner */}
                 <div className="mt-3 rounded-xl border border-cyan-500/30 bg-cyan-500/5 p-4">
                   <p className="text-xs leading-relaxed text-zinc-300">
-                    Live order fills trigger instant price slippage. Zero-latency
-                    trade execution and fill alerts are broadcast directly to the
-                    private VIP Telegram channel.
+                    Big whale fills move the market fast. Get large trades
+                    ($5k+) pushed to the private VIP Telegram channel within
+                    about a minute of the on-chain fill.
                   </p>
                   <a
                     href="https://buy.stripe.com/aFadR12WXeU26jh9h84ko00"
