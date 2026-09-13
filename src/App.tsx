@@ -1,5 +1,5 @@
 // src/App.tsx
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Loader2, AlertTriangle } from "lucide-react";
 import { Header } from "./components/Header";
 import { StatCards } from "./components/StatCards";
@@ -9,12 +9,20 @@ import { RecentMoves } from "./components/RecentMoves";
 import { WhaleDrawer } from "./components/WhaleDrawer";
 import { TelegramModal } from "./components/TelegramModal";
 import { useWhaleFilters } from "./hooks/useWhaleFilters";
+import { useWatchlist } from "./hooks/useWatchlist";
 import { useWhaleData, lookupWallet } from "./data/useWhaleData";
 import type { WhaleTrader } from "./types/whale";
 
+/** Read a ?wallet=0x… deep link, if present and valid. */
+function walletFromUrl(): string | null {
+  const p = new URLSearchParams(window.location.search).get("wallet");
+  return p && /^0x[0-9a-fA-F]{40}$/.test(p) ? p.toLowerCase() : null;
+}
+
 export default function App() {
   const { whales, recentMoves, source, lastUpdated, trackedCount } = useWhaleData();
-  const filters = useWhaleFilters(whales, recentMoves);
+  const watchlist = useWatchlist();
+  const filters = useWhaleFilters(whales, recentMoves, watchlist.isWatched);
   const [selected, setSelected] = useState<WhaleTrader | null>(null);
   const [telegramOpen, setTelegramOpen] = useState(false);
   const [lookupLoading, setLookupLoading] = useState(false);
@@ -22,19 +30,48 @@ export default function App() {
 
   const ready = source === "live" && whales.length > 0;
 
-  const handleLookup = async (address: string) => {
+  const openWallet = async (address: string, pushUrl: boolean) => {
     setLookupLoading(true);
     setLookupError(null);
     try {
       const whale = await lookupWallet(address);
       if (whale) {
         setSelected(whale);
+        if (pushUrl) {
+          const u = new URL(window.location.href);
+          u.searchParams.set("wallet", address.toLowerCase());
+          window.history.pushState({}, "", u);
+        }
       } else {
         setLookupError("No public data found for that wallet.");
       }
     } finally {
       setLookupLoading(false);
     }
+  };
+
+  const handleLookup = (address: string) => void openWallet(address, true);
+
+  // Open the drawer from a ?wallet=0x… deep link on first load.
+  useEffect(() => {
+    const w = walletFromUrl();
+    if (w) void openWallet(w, false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Keep the URL in sync when the drawer closes / opens a leaderboard whale.
+  const handleSelect = (w: WhaleTrader) => {
+    setSelected(w);
+    const u = new URL(window.location.href);
+    u.searchParams.set("wallet", w.address.toLowerCase());
+    window.history.replaceState({}, "", u);
+  };
+
+  const handleCloseDrawer = () => {
+    setSelected(null);
+    const u = new URL(window.location.href);
+    u.searchParams.delete("wallet");
+    window.history.replaceState({}, "", u);
   };
 
   return (
@@ -74,6 +111,9 @@ export default function App() {
               onCategory={filters.setCategory}
               highPnlOnly={filters.highPnlOnly}
               onHighPnlOnly={filters.setHighPnlOnly}
+              watchedOnly={filters.watchedOnly}
+              onWatchedOnly={filters.setWatchedOnly}
+              watchlistCount={watchlist.count}
               resultCount={filters.result.length}
               onLookup={handleLookup}
               lookupLoading={lookupLoading}
@@ -93,8 +133,10 @@ export default function App() {
               whales={filters.result}
               sort={filters.sort}
               onSort={filters.toggleSort}
-              onSelect={setSelected}
+              onSelect={handleSelect}
               selectedId={selected?.id}
+              isWatched={watchlist.isWatched}
+              onToggleWatch={watchlist.toggle}
             />
 
             <footer className="flex flex-wrap items-center justify-center gap-2 pt-2 text-center text-xs text-zinc-600">
@@ -115,8 +157,10 @@ export default function App() {
 
       <WhaleDrawer
         whale={selected}
-        onClose={() => setSelected(null)}
+        onClose={handleCloseDrawer}
         onUnlock={() => setTelegramOpen(true)}
+        isWatched={selected ? watchlist.isWatched(selected.address) : false}
+        onToggleWatch={() => selected && watchlist.toggle(selected.address)}
       />
 
       <TelegramModal open={telegramOpen} onClose={() => setTelegramOpen(false)} />

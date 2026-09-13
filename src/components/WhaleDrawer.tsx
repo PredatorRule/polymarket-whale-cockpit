@@ -1,6 +1,6 @@
 // src/components/WhaleDrawer.tsx
-import { useEffect } from "react";
-import { X, Lock, TrendingUp, ExternalLink, Zap } from "lucide-react";
+import { useEffect, useState } from "react";
+import { X, Lock, TrendingUp, ExternalLink, Send, Star, Link2, Check } from "lucide-react";
 import type { WhaleTrader, WhalePosition } from "../types/whale";
 import {
   formatSignedUsd,
@@ -17,6 +17,8 @@ interface Props {
   whale: WhaleTrader | null;
   onClose: () => void;
   onUnlock: () => void;
+  isWatched: boolean;
+  onToggleWatch: () => void;
 }
 
 function VisibleTrade({ p }: { p: WhalePosition }) {
@@ -47,45 +49,66 @@ function VisibleTrade({ p }: { p: WhalePosition }) {
   );
 }
 
-function LockedTrade({ p, onUnlock }: { p: WhalePosition; onUnlock: () => void }) {
+/**
+ * A blurred preview styled like an incoming Telegram whale-alert message, to
+ * convey the value of the signal stream (rather than an empty locked box).
+ */
+function LockedAlertCard({
+  side,
+  amount,
+  onUnlock,
+}: {
+  side: "YES" | "NO";
+  amount: string;
+  onUnlock: () => void;
+}) {
   return (
-    <div className="relative overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900/50 p-3">
-      {/* Blurred underlying content */}
-      <div className="pointer-events-none select-none blur-md" aria-hidden="true">
-        <div className="flex items-start justify-between gap-2">
-          <span className="text-sm text-zinc-200">{p.marketTitle}</span>
-          <OutcomePill outcome={p.outcome} />
+    <div className="relative overflow-hidden rounded-lg border border-cyan-500/20 bg-zinc-900/60 p-3">
+      {/* Simulated Telegram alert, blurred */}
+      <div className="pointer-events-none select-none blur-[6px]" aria-hidden="true">
+        <div className="flex items-center gap-2">
+          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-cyan-500/20 text-[10px]">
+            🚨
+          </span>
+          <span className="text-xs font-semibold text-zinc-100">WHALE MOVEMENT</span>
+          <span
+            className={`ml-auto rounded px-1.5 py-0.5 font-mono text-[10px] font-bold ${
+              side === "YES" ? "bg-emerald-500/20 text-emerald-300" : "bg-rose-500/20 text-rose-300"
+            }`}
+          >
+            [BOUGHT {side} · {amount}]
+          </span>
         </div>
-        <div className="mt-2 grid grid-cols-3 gap-2 font-mono text-xs">
-          <div>
-            <div className="text-zinc-500">Entry</div>
-            <div className="text-zinc-300">{formatCents(p.avgPrice)}</div>
-          </div>
-          <div>
-            <div className="text-zinc-500">Size</div>
-            <div className="text-zinc-300">{formatCompactUsd(p.totalCost)}</div>
-          </div>
-          <div className="text-right">
-            <div className="text-zinc-500">PnL</div>
-            <div className="text-emerald-400">{formatSignedUsd(p.pnl)}</div>
-          </div>
+        <div className="mt-2 space-y-1.5">
+          <div className="h-2 w-11/12 rounded bg-zinc-700/70" />
+          <div className="h-2 w-2/3 rounded bg-zinc-700/50" />
+          <div className="h-2 w-4/5 rounded bg-zinc-700/40" />
+        </div>
+        <div className="mt-2 flex gap-2">
+          <div className="h-5 w-24 rounded bg-cyan-500/20" />
+          <div className="h-5 w-16 rounded bg-zinc-700/50" />
         </div>
       </div>
-      {/* Lock overlay */}
-      <div className="absolute inset-0 flex items-center justify-center">
-        <Lock className="h-5 w-5 text-cyan-300" aria-hidden="true" />
+
+      {/* Padlock badge overlay */}
+      <div className="absolute right-2 top-2">
+        <span className="inline-flex items-center gap-1 rounded-full border border-cyan-500/30 bg-zinc-950/70 px-2 py-0.5 font-mono text-[10px] text-cyan-300">
+          <Lock className="h-3 w-3" aria-hidden="true" />
+          VIP
+        </span>
       </div>
       <button
         type="button"
         onClick={onUnlock}
         className="absolute inset-0 h-full w-full cursor-pointer"
-        aria-label="Unlock active whale positions"
+        aria-label="Join the VIP Telegram channel to unlock live signals"
       />
     </div>
   );
 }
 
-export function WhaleDrawer({ whale, onClose, onUnlock }: Props) {
+export function WhaleDrawer({ whale, onClose, onUnlock, isWatched, onToggleWatch }: Props) {
+  const [shared, setShared] = useState(false);
   useEffect(() => {
     if (!whale) return;
     const onKey = (e: KeyboardEvent) => {
@@ -97,7 +120,6 @@ export function WhaleDrawer({ whale, onClose, onUnlock }: Props) {
 
   const open = whale !== null;
   const visible = whale?.positions.filter((p) => !p.isLocked).slice(0, 2) ?? [];
-  const locked = whale?.positions.filter((p) => p.isLocked).slice(0, 2) ?? [];
 
   return (
     <>
@@ -145,14 +167,49 @@ export function WhaleDrawer({ whale, onClose, onUnlock }: Props) {
                   </a>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={onClose}
-                className="text-zinc-500 transition-colors hover:text-zinc-200"
-                aria-label="Close"
-              >
-                <X className="h-5 w-5" aria-hidden="true" />
-              </button>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={onToggleWatch}
+                  className={`rounded-lg p-1.5 transition-colors ${
+                    isWatched ? "text-amber-400" : "text-zinc-500 hover:text-zinc-200"
+                  }`}
+                  aria-label={isWatched ? "Unwatch wallet" : "Watch wallet"}
+                  aria-pressed={isWatched}
+                >
+                  <Star className={`h-5 w-5 ${isWatched ? "fill-amber-400" : ""}`} aria-hidden="true" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const u = new URL(window.location.href);
+                    u.searchParams.set("wallet", whale.address.toLowerCase());
+                    void navigator.clipboard?.writeText(u.toString()).then(
+                      () => {
+                        setShared(true);
+                        setTimeout(() => setShared(false), 1500);
+                      },
+                      () => undefined,
+                    );
+                  }}
+                  className="rounded-lg p-1.5 text-zinc-500 transition-colors hover:text-cyan-300"
+                  aria-label="Copy shareable link to this wallet"
+                >
+                  {shared ? (
+                    <Check className="h-5 w-5 text-emerald-400" aria-hidden="true" />
+                  ) : (
+                    <Link2 className="h-5 w-5" aria-hidden="true" />
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="rounded-lg p-1.5 text-zinc-500 transition-colors hover:text-zinc-200"
+                  aria-label="Close"
+                >
+                  <X className="h-5 w-5" aria-hidden="true" />
+                </button>
+              </div>
             </div>
 
             {/* Scrollable body */}
@@ -228,35 +285,35 @@ export function WhaleDrawer({ whale, onClose, onUnlock }: Props) {
                 </div>
               </div>
 
-              {/* Locked alpha trades */}
+              {/* Live Telegram signal feed (gated) */}
               <div>
                 <div className="mb-2 flex items-center gap-2">
-                  <Lock className="h-4 w-4 text-cyan-300" aria-hidden="true" />
+                  <Send className="h-4 w-4 text-cyan-300" aria-hidden="true" />
                   <h3 className="text-sm font-semibold text-zinc-200">
-                    Active Positions (Locked)
+                    Live Telegram Execution Feed
                   </h3>
                 </div>
                 <div className="space-y-2">
-                  {locked.map((p) => (
-                    <LockedTrade key={p.id} p={p} onUnlock={onUnlock} />
-                  ))}
+                  <LockedAlertCard side="YES" amount="$150K" onUnlock={onUnlock} />
+                  <LockedAlertCard side="NO" amount="$92K" onUnlock={onUnlock} />
                 </div>
 
                 {/* Conversion banner */}
                 <div className="mt-3 rounded-xl border border-cyan-500/30 bg-cyan-500/5 p-4">
                   <p className="text-xs leading-relaxed text-zinc-300">
-                    Active whale orders trigger immediate slippage. Instant,
-                    0-latency order execution and fill alerts are exclusive to Pro
-                    members.
+                    Live order fills trigger instant price slippage. Zero-latency
+                    trade execution and fill alerts are broadcast directly to the
+                    private VIP Telegram channel.
                   </p>
-                  <button
-                    type="button"
-                    onClick={onUnlock}
+                  <a
+                    href="https://buy.stripe.com/aFadR12WXeU26jh9h84ko00"
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg bg-cyan-500 px-4 py-2.5 text-sm font-semibold text-zinc-950 transition-colors hover:bg-cyan-400"
                   >
-                    <Zap className="h-4 w-4" aria-hidden="true" />
-                    Unlock Instant Whale Feeds (€29/mo)
-                  </button>
+                    <Send className="h-4 w-4" aria-hidden="true" />
+                    Join VIP Telegram Channel (€29/mo)
+                  </a>
                 </div>
               </div>
             </div>

@@ -9,6 +9,7 @@ import {
   ArrowUp,
   ArrowDown,
   ChevronsUpDown,
+  Star,
 } from "lucide-react";
 import type { WhaleTrader, SortKey, SortState } from "../types/whale";
 import {
@@ -27,6 +28,8 @@ interface Props {
   onSort: (key: SortKey) => void;
   onSelect: (whale: WhaleTrader) => void;
   selectedId?: string;
+  isWatched: (address: string) => boolean;
+  onToggleWatch: (address: string) => void;
 }
 
 function RankCell({ rank }: { rank: number }) {
@@ -124,6 +127,8 @@ export function LeaderboardTable({
   onSort,
   onSelect,
   selectedId,
+  isWatched,
+  onToggleWatch,
 }: Props) {
   return (
     <div className="overflow-hidden rounded-xl border border-zinc-800 bg-surface shadow-lg shadow-black/20">
@@ -131,6 +136,7 @@ export function LeaderboardTable({
         <table className="w-full min-w-[960px] border-collapse text-sm">
           <thead>
             <tr className="border-b border-zinc-800 bg-zinc-900/40 text-left">
+              <th className="w-8 px-2 py-3" aria-label="Watch" />
               <th className="px-4 py-3">
                 <SortHeader label="Rank" column="rank" sort={sort} onSort={onSort} />
               </th>
@@ -180,6 +186,26 @@ export function LeaderboardTable({
                     selected ? "bg-cyan-500/5" : "hover:bg-zinc-800/40"
                   }`}
                 >
+                  {/* Watch star */}
+                  <td className="px-2 py-3">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onToggleWatch(w.address);
+                      }}
+                      className={`transition-colors ${
+                        isWatched(w.address)
+                          ? "text-amber-400"
+                          : "text-zinc-600 hover:text-zinc-300"
+                      }`}
+                      aria-label={isWatched(w.address) ? "Unwatch wallet" : "Watch wallet"}
+                      aria-pressed={isWatched(w.address)}
+                    >
+                      <Star className={`h-4 w-4 ${isWatched(w.address) ? "fill-amber-400" : ""}`} aria-hidden="true" />
+                    </button>
+                  </td>
+
                   {/* Rank */}
                   <td className="px-4 py-3">
                     <RankCell rank={w.rank} />
@@ -293,7 +319,7 @@ export function LeaderboardTable({
             })}
             {whales.length === 0 && (
               <tr>
-                <td colSpan={8} className="px-4 py-12 text-center text-sm text-zinc-500">
+                <td colSpan={9} className="px-4 py-12 text-center text-sm text-zinc-500">
                   No wallets match your filters.
                 </td>
               </tr>

@@ -66,15 +66,39 @@ function classify(w: ApiWhale): WhaleCategory {
   return classifyTitles(w.positions.map((p) => p.marketTitle));
 }
 
-/** Badges from REAL leaderboard + closed-position metrics. */
+/**
+ * Differentiating badges: only surface signals that actually vary across the
+ * board, so a badge means something at a glance instead of every row sharing
+ * the same generic tags.
+ */
 function badgesFor(w: ApiWhale): string[] {
   const b: string[] = [];
-  if (w.leaderRankAll > 0 && w.leaderRankAll <= 100) b.push(`Leaderboard #${w.leaderRankAll}`);
-  if (w.totalPnl > 1_000_000) b.push("Top 1% PnL");
-  if (w.totalVolume > 100_000) b.push("Whale (>100k)");
-  if (w.winRate >= 75) b.push("High Win Rate");
-  if (w.activePositionsCount >= 10) b.push("High Activity");
-  return b.length ? b : ["Tracked Wallet"];
+  const nowSec = Date.now() / 1000;
+
+  // Freshness — the single most useful "should I care right now" signal.
+  if (w.lastTradeTs > 0) {
+    const ageMin = (nowSec - w.lastTradeTs) / 60;
+    if (ageMin <= 60) b.push("🔥 Hot");
+    else if (ageMin <= 60 * 24) b.push("Active today");
+    else if (ageMin > 60 * 24 * 14) b.push("💤 Dormant");
+  }
+
+  // Sharpness vs degen — win rate + sample size.
+  const closed = w.wins + w.losses;
+  if (w.winRate >= 65 && closed >= 20) b.push("🎯 Sharp");
+  else if (w.winRate > 0 && w.winRate < 40 && closed >= 20) b.push("🎲 Coinflip");
+
+  // Currently exposed vs flat.
+  if (w.activePositionsCount === 0) b.push("Flat");
+  else if (w.openValueUsdc >= 250_000) b.push("Heavy exposure");
+
+  // Recent momentum vs all-time (rising star).
+  if (w.pnl7d > 0 && w.totalPnl > 0 && w.pnl7d >= w.totalPnl * 0.25) b.push("📈 Surging");
+
+  // In the red.
+  if (w.totalPnl < 0) b.push("📉 Underwater");
+
+  return b.length ? b : ["Tracked"];
 }
 
 /**

@@ -1,5 +1,5 @@
 // src/components/FilterBar.tsx
-import { Search, Filter as FilterIcon } from "lucide-react";
+import { Search, Filter as FilterIcon, Star } from "lucide-react";
 import type {
   TimeHorizon,
   CategoryFilter,
@@ -41,6 +41,9 @@ interface Props {
   onCategory: (c: CategoryFilter) => void;
   highPnlOnly: boolean;
   onHighPnlOnly: (v: boolean) => void;
+  watchedOnly: boolean;
+  onWatchedOnly: (v: boolean) => void;
+  watchlistCount: number;
   resultCount: number;
   onLookup: (address: string) => void;
   lookupLoading: boolean;
@@ -57,6 +60,9 @@ export function FilterBar({
   onCategory,
   highPnlOnly,
   onHighPnlOnly,
+  watchedOnly,
+  onWatchedOnly,
+  watchlistCount,
   resultCount,
   onLookup,
   lookupLoading,
@@ -145,6 +151,20 @@ export function FilterBar({
         </div>
 
         <div className="flex items-center justify-between gap-3">
+          <button
+            type="button"
+            onClick={() => onWatchedOnly(!watchedOnly)}
+            aria-pressed={watchedOnly}
+            className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
+              watchedOnly
+                ? "border-amber-500/40 bg-amber-500/10 text-amber-400"
+                : "border-zinc-800 bg-zinc-900/50 text-zinc-400 hover:text-zinc-200"
+            }`}
+            title="Show only wallets you've starred"
+          >
+            <Star className={`h-3.5 w-3.5 ${watchedOnly ? "fill-amber-400" : ""}`} aria-hidden="true" />
+            My Whales{watchlistCount > 0 ? ` (${watchlistCount})` : ""}
+          </button>
           <button
             type="button"
             onClick={() => onHighPnlOnly(!highPnlOnly)}

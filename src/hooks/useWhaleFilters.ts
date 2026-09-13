@@ -21,6 +21,8 @@ export interface UseWhaleFilters {
   setCategory: (c: CategoryFilter) => void;
   highPnlOnly: boolean;
   setHighPnlOnly: (v: boolean) => void;
+  watchedOnly: boolean;
+  setWatchedOnly: (v: boolean) => void;
   sort: SortState;
   toggleSort: (key: SortKey) => void;
   result: WhaleTrader[];
@@ -43,11 +45,13 @@ function pnlForHorizon(w: WhaleTrader, horizon: TimeHorizon): number {
 export function useWhaleFilters(
   whales: WhaleTrader[],
   allMoves: RecentMove[] = [],
+  isWatched: (address: string) => boolean = () => false,
 ): UseWhaleFilters {
   const [search, setSearch] = useState("");
   const [horizon, setHorizon] = useState<TimeHorizon>("all");
   const [category, setCategory] = useState<CategoryFilter>("All");
   const [highPnlOnly, setHighPnlOnly] = useState(false);
+  const [watchedOnly, setWatchedOnly] = useState(false);
   const [sort, setSort] = useState<SortState>({ key: "rank", direction: "asc" });
 
   function toggleSort(key: SortKey): void {
@@ -64,6 +68,7 @@ export function useWhaleFilters(
     const q = search.trim().toLowerCase();
 
     const filtered = whales.filter((w) => {
+      if (watchedOnly && !isWatched(w.address)) return false;
       if (category !== "All" && w.category !== category) return false;
       if (highPnlOnly && pnlForHorizon(w, horizon) <= HIGH_PNL_THRESHOLD) return false;
       if (q) {
@@ -112,7 +117,8 @@ export function useWhaleFilters(
     });
 
     return sorted;
-  }, [whales, search, horizon, category, highPnlOnly, sort]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [whales, search, horizon, category, highPnlOnly, watchedOnly, sort]);
 
   // Apply the same search + category filters to the live moves feed, so the
   // whole page responds to the controls, not just the leaderboard.
@@ -137,6 +143,8 @@ export function useWhaleFilters(
     setCategory,
     highPnlOnly,
     setHighPnlOnly,
+    watchedOnly,
+    setWatchedOnly,
     sort,
     toggleSort,
     result,
