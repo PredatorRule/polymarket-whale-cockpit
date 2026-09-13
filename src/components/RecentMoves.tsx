@@ -25,9 +25,13 @@ export function RecentMoves({ moves }: { moves: RecentMove[] }) {
   const [freshKeys, setFreshKeys] = useState<Set<string>>(new Set());
 
   useEffect(() => {
+    // Wait for the first non-empty payload before seeding the baseline, so the
+    // initial data load doesn't count as "all new" and flash every row.
+    if (moves.length === 0) return;
+
     const current = new Set(moves.map(moveKey));
     if (seenRef.current === null) {
-      // First load: don't flash the whole list.
+      // First real load: seed the baseline, flash nothing.
       seenRef.current = current;
       return;
     }
