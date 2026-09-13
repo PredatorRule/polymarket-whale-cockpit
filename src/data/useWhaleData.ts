@@ -100,43 +100,62 @@ function mapPositions(w: ApiWhale, category: WhaleCategory): WhalePosition[] {
   }));
 }
 
+function adaptOne(w: ApiWhale, rank: number): WhaleTrader {
+  const category = classify(w);
+  const positions = mapPositions(w, category);
+  const top = w.topBet;
+  return {
+    id: w.address || `w${rank}`,
+    rank,
+    address: w.address,
+    ensName: w.name,
+    totalPnl: w.totalPnl,
+    pnl30d: w.pnl30d,
+    pnl7d: w.pnl7d,
+    winRate: w.winRate,
+    wins: w.wins,
+    losses: w.losses,
+    totalVolume: w.totalVolume,
+    activePositionsCount: w.activePositionsCount,
+    category,
+    badges: badgesFor(w),
+    lastActive: "live",
+    lastTradeTs: w.lastTradeTs ?? 0,
+    currentTopBet: top
+      ? {
+          marketTitle: top.marketTitle,
+          outcome: top.outcome as Outcome,
+          amount: top.currentPrice * top.shares,
+        }
+      : {
+          marketTitle: w.activePositionsCount > 0 ? "Open positions" : "No open positions",
+          outcome: w.totalPnl >= 0 ? "YES" : "NO",
+          amount: w.openValueUsdc,
+        },
+    positions,
+  };
+}
+
 function adapt(list: ApiWhale[]): WhaleTrader[] {
   const ranked = [...list].sort((a, b) => b.totalPnl - a.totalPnl);
-  return ranked.map((w, i) => {
-    const category = classify(w);
-    const positions = mapPositions(w, category);
-    const top = w.topBet;
-    return {
-      id: w.address || `w${i}`,
-      rank: i + 1,
-      address: w.address,
-      ensName: w.name,
-      totalPnl: w.totalPnl,
-      pnl30d: w.pnl30d,
-      pnl7d: w.pnl7d,
-      winRate: w.winRate,
-      wins: w.wins,
-      losses: w.losses,
-      totalVolume: w.totalVolume,
-      activePositionsCount: w.activePositionsCount,
-      category,
-      badges: badgesFor(w),
-      lastActive: "live",
-      lastTradeTs: w.lastTradeTs ?? 0,
-      currentTopBet: top
-        ? {
-            marketTitle: top.marketTitle,
-            outcome: top.outcome as Outcome,
-            amount: top.currentPrice * top.shares,
-          }
-        : {
-            marketTitle: w.activePositionsCount > 0 ? "Open positions" : "No open positions",
-            outcome: w.totalPnl >= 0 ? "YES" : "NO",
-            amount: w.openValueUsdc,
-          },
-      positions,
-    };
-  });
+  return ranked.map((w, i) => adaptOne(w, i + 1));
+}
+
+/** Look up any public wallet on demand via /api/wallet. */
+export async function lookupWallet(address: string): Promise<WhaleTrader | null> {
+  const addr = address.trim().toLowerCase();
+  if (!/^0x[0-9a-f]{40}$/.test(addr)) return null;
+  try {
+    const r = await fetch(`/api/wallet?address=${addr}`, { cache: "no-store" });
+    if (!r.ok) return null;
+    const data = (await r.json()) as { ok: boolean; whale: ApiWhale | null };
+    if (!data.ok || !data.whale) return null;
+    const t = adaptOne(data.whale, 0);
+    t.badges = ["Custom lookup", ...t.badges.filter((b) => !b.startsWith("Leaderboard"))];
+    return t;
+  } catch {
+    return null;
+  }
 }
 
 // Auto-refresh interval (ms). The API is edge-cached, so frequent polls are
@@ -148,6 +167,7 @@ export function useWhaleData(): {
   recentMoves: RecentMove[];
   source: DataSource;
   lastUpdated: number | null;
+  trackedCount: number;
 } {
   const [whales, setWhales] = useState<WhaleTrader[]>([]);
   const [recentMoves, setRecentMoves] = useState<RecentMove[]>([]);
@@ -206,5 +226,5 @@ export function useWhaleData(): {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  return { whales, recentMoves, source, lastUpdated };
+  return { whales, recentMoves, source, lastUpdated, trackedCount: whales.length };
 }

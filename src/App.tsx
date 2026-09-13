@@ -9,20 +9,37 @@ import { RecentMoves } from "./components/RecentMoves";
 import { WhaleDrawer } from "./components/WhaleDrawer";
 import { TelegramModal } from "./components/TelegramModal";
 import { useWhaleFilters } from "./hooks/useWhaleFilters";
-import { useWhaleData } from "./data/useWhaleData";
+import { useWhaleData, lookupWallet } from "./data/useWhaleData";
 import type { WhaleTrader } from "./types/whale";
 
 export default function App() {
-  const { whales, recentMoves, source, lastUpdated } = useWhaleData();
+  const { whales, recentMoves, source, lastUpdated, trackedCount } = useWhaleData();
   const filters = useWhaleFilters(whales, recentMoves);
   const [selected, setSelected] = useState<WhaleTrader | null>(null);
   const [telegramOpen, setTelegramOpen] = useState(false);
+  const [lookupLoading, setLookupLoading] = useState(false);
+  const [lookupError, setLookupError] = useState<string | null>(null);
 
   const ready = source === "live" && whales.length > 0;
 
+  const handleLookup = async (address: string) => {
+    setLookupLoading(true);
+    setLookupError(null);
+    try {
+      const whale = await lookupWallet(address);
+      if (whale) {
+        setSelected(whale);
+      } else {
+        setLookupError("No public data found for that wallet.");
+      }
+    } finally {
+      setLookupLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-zinc-950 bg-[radial-gradient(ellipse_at_top,rgba(16,185,129,0.05),transparent_55%)]">
-      <Header onOpenTelegram={() => setTelegramOpen(true)} />
+      <Header onOpenTelegram={() => setTelegramOpen(true)} trackedCount={trackedCount} />
 
       <main className="mx-auto max-w-7xl space-y-4 px-4 py-6">
         {source === "loading" && (
@@ -58,7 +75,15 @@ export default function App() {
               highPnlOnly={filters.highPnlOnly}
               onHighPnlOnly={filters.setHighPnlOnly}
               resultCount={filters.result.length}
+              onLookup={handleLookup}
+              lookupLoading={lookupLoading}
             />
+
+            {lookupError && (
+              <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-2 text-sm text-amber-300">
+                {lookupError}
+              </div>
+            )}
 
             <StatCards whales={filters.result} />
 

@@ -1,7 +1,13 @@
 // src/components/Header.tsx
 import { Radar, Send } from "lucide-react";
 
-export function Header({ onOpenTelegram }: { onOpenTelegram: () => void }) {
+export function Header({
+  onOpenTelegram,
+  trackedCount,
+}: {
+  onOpenTelegram: () => void;
+  trackedCount: number;
+}) {
   return (
     <header className="sticky top-0 z-30 border-b border-zinc-800 bg-zinc-950/80 backdrop-blur-md">
       <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:py-4">
@@ -19,7 +25,9 @@ export function Header({ onOpenTelegram }: { onOpenTelegram: () => void }) {
                 aria-hidden="true"
               />
               <span className="font-mono text-[11px] text-zinc-500">
-                Tracking 50 Verified Wallets · Polygon Mainnet
+                {trackedCount > 0
+                  ? `Tracking top ${trackedCount} wallets · Polygon Mainnet`
+                  : "Live · Polygon Mainnet"}
               </span>
             </div>
           </div>

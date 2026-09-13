@@ -42,7 +42,11 @@ interface Props {
   highPnlOnly: boolean;
   onHighPnlOnly: (v: boolean) => void;
   resultCount: number;
+  onLookup: (address: string) => void;
+  lookupLoading: boolean;
 }
+
+const ADDRESS_RE = /^0x[0-9a-fA-F]{40}$/;
 
 export function FilterBar({
   search,
@@ -54,24 +58,47 @@ export function FilterBar({
   highPnlOnly,
   onHighPnlOnly,
   resultCount,
+  onLookup,
+  lookupLoading,
 }: Props) {
+  const trimmed = search.trim();
+  const isAddress = ADDRESS_RE.test(trimmed);
+
   return (
     <div className="rounded-xl border border-zinc-800 bg-surface p-3 shadow-lg shadow-black/20">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        {/* Search */}
-        <div className="relative w-full lg:max-w-xs">
-          <Search
-            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500"
-            aria-hidden="true"
-          />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => onSearch(e.target.value)}
-            placeholder="Search address or ENS…"
-            aria-label="Search by wallet address or ENS"
-            className="w-full rounded-lg border border-zinc-800 bg-zinc-900/70 py-2 pl-9 pr-3 font-mono text-sm text-zinc-100 outline-none transition placeholder:text-zinc-600 focus:border-zinc-600 focus:ring-1 focus:ring-cyan-500/40"
-          />
+        {/* Search + any-wallet lookup */}
+        <div className="flex w-full items-center gap-2 lg:max-w-lg">
+          <div className="relative flex-1">
+            <Search
+              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500"
+              aria-hidden="true"
+            />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => onSearch(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && isAddress) onLookup(trimmed);
+              }}
+              placeholder="Filter list, or paste any 0x wallet to look it up…"
+              aria-label="Search the leaderboard or look up any wallet"
+              className="w-full rounded-lg border border-zinc-800 bg-zinc-900/70 py-2 pl-9 pr-3 font-mono text-sm text-zinc-100 outline-none transition placeholder:text-zinc-600 focus:border-zinc-600 focus:ring-1 focus:ring-cyan-500/40"
+            />
+          </div>
+          <button
+            type="button"
+            onClick={() => isAddress && onLookup(trimmed)}
+            disabled={!isAddress || lookupLoading}
+            className={`shrink-0 rounded-lg border px-3 py-2 text-xs font-semibold transition ${
+              isAddress && !lookupLoading
+                ? "border-cyan-500/40 bg-cyan-500/10 text-cyan-300 hover:bg-cyan-500/20"
+                : "cursor-not-allowed border-zinc-800 bg-zinc-900/40 text-zinc-600"
+            }`}
+            title={isAddress ? "Look up this wallet" : "Paste a full 0x… address to look up any wallet"}
+          >
+            {lookupLoading ? "Looking up…" : "Look up wallet"}
+          </button>
         </div>
 
         {/* Horizon tabs */}
