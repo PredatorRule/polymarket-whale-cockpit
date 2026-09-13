@@ -149,6 +149,16 @@ export default function App() {
                   updated {new Date(lastUpdated).toLocaleTimeString()}
                 </span>
               )}
+              <a href="/faq" className="hover:text-zinc-300">FAQ</a>
+              <a href="/how-it-works" className="hover:text-zinc-300">How it works</a>
+              <a
+                href="https://prediction-market-arb-cockpit.pages.dev/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-zinc-300"
+              >
+                Arbitrage Calculator ↗
+              </a>
               <span>Not financial advice.</span>
             </footer>
           </>
