@@ -1,4 +1,5 @@
 // src/components/RecentMoves.tsx
+import { useEffect, useRef, useState } from "react";
 import { Zap } from "lucide-react";
 import type { RecentMove } from "../data/useWhaleData";
 import { formatCompactUsd, truncateAddress } from "../lib/format";
@@ -13,7 +14,33 @@ function ago(ts: number): string {
   return `${hrs}h ago`;
 }
 
+/** Stable identity for a move row. */
+function moveKey(m: RecentMove): string {
+  return `${m.wallet}-${m.timestamp}-${m.title}-${m.notionalUsd}`;
+}
+
 export function RecentMoves({ moves }: { moves: RecentMove[] }) {
+  // Track which move keys we've already rendered so newly arrived ones flash.
+  const seenRef = useRef<Set<string> | null>(null);
+  const [freshKeys, setFreshKeys] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    const current = new Set(moves.map(moveKey));
+    if (seenRef.current === null) {
+      // First load: don't flash the whole list.
+      seenRef.current = current;
+      return;
+    }
+    const fresh = new Set<string>();
+    for (const k of current) if (!seenRef.current.has(k)) fresh.add(k);
+    seenRef.current = current;
+    if (fresh.size > 0) {
+      setFreshKeys(fresh);
+      const t = setTimeout(() => setFreshKeys(new Set()), 2400);
+      return () => clearTimeout(t);
+    }
+  }, [moves]);
+
   if (moves.length === 0) return null;
 
   return (
@@ -26,16 +53,20 @@ export function RecentMoves({ moves }: { moves: RecentMove[] }) {
           live
         </span>
       </div>
-      <div className="max-h-72 overflow-y-auto scroll-thin divide-y divide-zinc-800/60">
-        {moves.map((m, i) => {
+      <div className="max-h-72 divide-y divide-zinc-800/60 overflow-y-auto scroll-thin">
+        {moves.map((m) => {
+          const key = moveKey(m);
           const buy = m.action.startsWith("BOUGHT");
+          const isFresh = freshKeys.has(key);
           return (
             <a
-              key={`${m.wallet}-${m.timestamp}-${i}`}
+              key={key}
               href={m.eventUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-zinc-800/40"
+              className={`flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-zinc-800/40 ${
+                isFresh ? "animate-flash-new" : ""
+              }`}
             >
               <span
                 className={`shrink-0 font-mono text-xs font-semibold ${buy ? "text-emerald-400" : "text-rose-400"}`}

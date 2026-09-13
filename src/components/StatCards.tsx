@@ -16,6 +16,9 @@ interface Kpi {
 }
 
 export function StatCards({ whales }: { whales: WhaleTrader[] }) {
+  // Guard: the filtered set can be empty (e.g. a search with no matches).
+  if (whales.length === 0) return null;
+
   // Top whale 30d PnL.
   const topWhale30d = whales.reduce(
     (best, w) => (w.pnl30d > best ? w.pnl30d : best),
@@ -26,7 +29,7 @@ export function StatCards({ whales }: { whales: WhaleTrader[] }) {
   const trackedVolume = whales.reduce((sum, w) => sum + w.totalVolume, 0);
   const volume24h = trackedVolume * 0.018;
 
-  // Largest active stake across all wallets.
+  // Largest active stake across the (filtered) wallets.
   const largestBet = whales.reduce(
     (best, w) => (w.currentTopBet.amount > best.currentTopBet.amount ? w : best),
     whales[0],

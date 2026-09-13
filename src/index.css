@@ -50,6 +50,19 @@
     animation: pulse-beacon 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   }
 
+  /* Brief highlight when a fresh whale move enters the feed. */
+  @keyframes flash-new {
+    0% {
+      background-color: rgba(6, 182, 212, 0.22);
+    }
+    100% {
+      background-color: transparent;
+    }
+  }
+  .animate-flash-new {
+    animation: flash-new 2.2s ease-out 1;
+  }
+
   /* Thin dark scrollbar for the drawer. */
   .scroll-thin {
     scrollbar-width: thin;

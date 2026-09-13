@@ -7,6 +7,8 @@ import type {
   SortKey,
   SortState,
 } from "../types/whale";
+import type { RecentMove } from "../data/useWhaleData";
+import { classifyTitles } from "../lib/classify";
 
 const HIGH_PNL_THRESHOLD = 500_000;
 
@@ -22,6 +24,7 @@ export interface UseWhaleFilters {
   sort: SortState;
   toggleSort: (key: SortKey) => void;
   result: WhaleTrader[];
+  moves: RecentMove[];
 }
 
 /** Returns the PnL field a given horizon sorts/filters on. */
@@ -37,7 +40,10 @@ function pnlForHorizon(w: WhaleTrader, horizon: TimeHorizon): number {
   }
 }
 
-export function useWhaleFilters(whales: WhaleTrader[]): UseWhaleFilters {
+export function useWhaleFilters(
+  whales: WhaleTrader[],
+  allMoves: RecentMove[] = [],
+): UseWhaleFilters {
   const [search, setSearch] = useState("");
   const [horizon, setHorizon] = useState<TimeHorizon>("all");
   const [category, setCategory] = useState<CategoryFilter>("All");
@@ -108,6 +114,20 @@ export function useWhaleFilters(whales: WhaleTrader[]): UseWhaleFilters {
     return sorted;
   }, [whales, search, horizon, category, highPnlOnly, sort]);
 
+  // Apply the same search + category filters to the live moves feed, so the
+  // whole page responds to the controls, not just the leaderboard.
+  const moves = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return allMoves.filter((m) => {
+      if (category !== "All" && classifyTitles([m.title]) !== category) return false;
+      if (q) {
+        const hay = `${m.wallet} ${m.name ?? ""} ${m.title}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+  }, [allMoves, search, category]);
+
   return {
     search,
     setSearch,
@@ -120,5 +140,6 @@ export function useWhaleFilters(whales: WhaleTrader[]): UseWhaleFilters {
     sort,
     toggleSort,
     result,
+    moves,
   };
 }

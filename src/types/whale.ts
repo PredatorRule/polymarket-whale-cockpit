@@ -43,6 +43,7 @@ export interface WhaleTrader {
   category: WhaleCategory;
   badges: string[];
   lastActive: string; // relative label like "4m ago"
+  lastTradeTs: number; // seconds since epoch; 0 if unknown
   currentTopBet: CurrentTopBet;
   positions: WhalePosition[];
 }

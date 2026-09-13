@@ -48,6 +48,23 @@ export function formatCents(price: number): string {
   return `${Math.round(price * 100)}¢`;
 }
 
+/**
+ * Last-seen from a unix-seconds timestamp: shows the date + time of the last
+ * trade (e.g. "Sep 12, 14:32"), or "—" when unknown. Recent trades within the
+ * last day include a relative hint via the cell's title attribute upstream.
+ */
+export function formatLastSeen(tsSeconds: number): string {
+  if (!tsSeconds || tsSeconds <= 0) return "\u2014";
+  const d = new Date(tsSeconds * 1000);
+  if (Number.isNaN(d.getTime())) return "\u2014";
+  return d.toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 /** Tailwind text color class for a PnL value. */
 export function pnlColor(value: number): string {
   if (value > 0) return "text-emerald-400";

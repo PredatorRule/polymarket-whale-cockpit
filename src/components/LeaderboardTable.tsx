@@ -17,6 +17,7 @@ import {
   formatPercent,
   truncateAddress,
   pnlColor,
+  formatLastSeen,
 } from "../lib/format";
 import { Badge, OutcomePill, toneForBadge } from "./Badge";
 
@@ -274,10 +275,17 @@ export function LeaderboardTable({
                     </div>
                   </td>
 
-                  {/* Last seen */}
+                  {/* Last seen: date + time of last trade */}
                   <td className="px-4 py-3 text-right">
-                    <span className="inline-flex items-center rounded-full border border-zinc-800 bg-zinc-900/60 px-2 py-0.5 font-mono text-[11px] text-zinc-400">
-                      {w.lastActive}
+                    <span
+                      className="inline-flex items-center whitespace-nowrap rounded-full border border-zinc-800 bg-zinc-900/60 px-2 py-0.5 font-mono text-[11px] text-zinc-400"
+                      title={
+                        w.lastTradeTs > 0
+                          ? new Date(w.lastTradeTs * 1000).toString()
+                          : "No recent trade"
+                      }
+                    >
+                      {formatLastSeen(w.lastTradeTs)}
                     </span>
                   </td>
                 </tr>

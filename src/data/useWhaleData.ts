@@ -3,6 +3,7 @@
 // leaderboard + positions). Real data only — no mock is ever displayed.
 import { useEffect, useState } from "react";
 import type { WhaleTrader, WhaleCategory, Outcome, WhalePosition } from "../types/whale";
+import { classifyTitles } from "../lib/classify";
 
 export type DataSource = "live" | "error" | "loading";
 
@@ -46,39 +47,23 @@ interface ApiWhale {
   openValueUsdc: number;
   positions: ApiPosition[];
   topBet: ApiPosition | null;
+  lastTradeTs: number;
 }
 
 interface ApiResponse {
   ok: boolean;
   reason: string;
   whales: ApiWhale[];
-  recentMoves?: RecentMove[];
 }
 
-// Keyword → category classification from the real market titles. Order matters:
-// the first matching category wins, so Sports (very common on Polymarket) and
-// Crypto are checked before the broader buckets.
-const CATEGORY_KEYWORDS: { category: WhaleCategory; words: string[] }[] = [
-  { category: "Crypto", words: ["btc", "bitcoin", "eth", "ethereum", "sol", "solana", "crypto", "coin", "token", "xrp", "doge", "nft"] },
-  { category: "Sports", words: [
-    "fc", "cf", "united", "city", "vs", "win on", "match", "cup", "league",
-    "nba", "nfl", "mlb", "nhl", "ufc", "premier", "la liga", "serie a",
-    "champions", "playoff", "super bowl", "world cup", "tennis", "atp", "wta",
-    "soccer", "football", "basketball", "baseball", "hockey", "score",
-    "whitecaps", "grand prix", "f1", "formula",
-  ] },
-  { category: "Politics", words: ["president", "election", "senate", "congress", "trump", "biden", "governor", "poll", "vote", "shutdown", "speaker", "cabinet", "primary", "nominee"] },
-  { category: "Macro", words: ["fed", "rate", "cpi", "inflation", "recession", "gdp", "unemployment", "jobs", "yield", "oil", "gold", "ecb", "interest"] },
-  { category: "Pop Culture", words: ["movie", "oscar", "album", "box office", "grammy", "show", "celebrity", "award", "streaming", "spotify", "netflix"] },
-];
+interface MovesResponse {
+  ok: boolean;
+  moves: RecentMove[];
+}
 
 /** Classify from real position titles; unmatched titles are honestly "Other". */
 function classify(w: ApiWhale): WhaleCategory {
-  const hay = w.positions.map((p) => p.marketTitle.toLowerCase()).join(" ");
-  for (const { category, words } of CATEGORY_KEYWORDS) {
-    if (words.some((word) => hay.includes(word))) return category;
-  }
-  return "Other";
+  return classifyTitles(w.positions.map((p) => p.marketTitle));
 }
 
 /** Badges from REAL leaderboard + closed-position metrics. */
@@ -137,6 +122,7 @@ function adapt(list: ApiWhale[]): WhaleTrader[] {
       category,
       badges: badgesFor(w),
       lastActive: "live",
+      lastTradeTs: w.lastTradeTs ?? 0,
       currentTopBet: top
         ? {
             marketTitle: top.marketTitle,
@@ -172,6 +158,8 @@ export function useWhaleData(): {
     let cancelled = false;
 
     const load = async () => {
+      // Leaderboard and the live moves feed are separate endpoints so each has
+      // its own subrequest budget; fetch them independently.
       try {
         const r = await fetch("/api/whales", { cache: "no-store" });
         if (!r.ok) throw new Error("bad status");
@@ -179,17 +167,25 @@ export function useWhaleData(): {
         if (cancelled) return;
         if (data.ok && data.whales.length > 0) {
           setWhales(adapt(data.whales));
-          setRecentMoves(data.recentMoves ?? []);
           setSource("live");
           setLastUpdated(Date.now());
         } else if (source === "loading") {
-          // Only surface an error if we have nothing to show yet; otherwise
-          // keep the last good data on a transient failure.
           setSource("error");
         }
       } catch {
         if (cancelled) return;
         if (source === "loading") setSource("error");
+      }
+
+      // Moves are best-effort; a failure here never breaks the leaderboard.
+      try {
+        const mr = await fetch("/api/moves", { cache: "no-store" });
+        if (mr.ok) {
+          const md = (await mr.json()) as MovesResponse;
+          if (!cancelled && md.ok) setRecentMoves(md.moves ?? []);
+        }
+      } catch {
+        /* keep last good moves */
       }
     };
 

@@ -14,7 +14,7 @@ import type { WhaleTrader } from "./types/whale";
 
 export default function App() {
   const { whales, recentMoves, source, lastUpdated } = useWhaleData();
-  const filters = useWhaleFilters(whales);
+  const filters = useWhaleFilters(whales, recentMoves);
   const [selected, setSelected] = useState<WhaleTrader | null>(null);
   const [telegramOpen, setTelegramOpen] = useState(false);
 
@@ -48,10 +48,6 @@ export default function App() {
 
         {ready && (
           <>
-            <StatCards whales={whales} />
-
-            <RecentMoves moves={recentMoves} />
-
             <FilterBar
               search={filters.search}
               onSearch={filters.setSearch}
@@ -63,6 +59,10 @@ export default function App() {
               onHighPnlOnly={filters.setHighPnlOnly}
               resultCount={filters.result.length}
             />
+
+            <StatCards whales={filters.result} />
+
+            <RecentMoves moves={filters.moves} />
 
             <LeaderboardTable
               whales={filters.result}
