@@ -140,6 +140,7 @@ function renderHtml(a: WalletAudit): string {
         · <a href="${ORIGIN}/faq">FAQ</a>
       </footer>
     </div>
+    <!-- Cloudflare Web Analytics --><script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "ac8cd903a7aa48218efb6534f1d20e93"}'></script><!-- End Cloudflare Web Analytics -->
   </body>
 </html>`;
 }
