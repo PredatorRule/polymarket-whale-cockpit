@@ -1,0 +1,24 @@
+name = "vip-access"
+main = "src/index.ts"
+compatibility_date = "2026-09-11"
+
+# Public channel/chat ID the VIP members join (numeric, e.g. -1004479790333).
+[vars]
+TELEGRAM_CHAT_ID = "-1004479790333"
+# Where to send buyers who land on /join without a valid session.
+COCKPIT_URL = "https://polymarket-whale-cockpit.pages.dev"
+
+# Maps Stripe subscription/customer -> Telegram user, so we can auto-remove on
+# cancellation. Also stores short-lived join intents.
+[[kv_namespaces]]
+binding = "VIP_STATE"
+id = "REPLACE_WITH_KV_NAMESPACE_ID"
+
+[observability]
+enabled = true
+
+# Secrets (set via `wrangler secret put`, NEVER committed):
+#   STRIPE_SECRET_KEY        sk_live_... (server-side session/subscription reads)
+#   STRIPE_WEBHOOK_SECRET    whsec_...   (verifies Stripe webhook signatures)
+#   TELEGRAM_BOT_TOKEN       bot token; bot must be ADMIN of the channel with
+#                            "invite users" + "ban users" permissions
