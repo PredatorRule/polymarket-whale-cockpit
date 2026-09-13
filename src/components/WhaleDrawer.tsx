@@ -182,9 +182,9 @@ export function WhaleDrawer({ whale, onClose, onUnlock, isWatched, onToggleWatch
                 <button
                   type="button"
                   onClick={() => {
-                    const u = new URL(window.location.href);
-                    u.searchParams.set("wallet", whale.address.toLowerCase());
-                    void navigator.clipboard?.writeText(u.toString()).then(
+                    // Share the crawlable SSR page, not the in-app deep link.
+                    const shareUrl = `${window.location.origin}/wallet/${whale.address.toLowerCase()}`;
+                    void navigator.clipboard?.writeText(shareUrl).then(
                       () => {
                         setShared(true);
                         setTimeout(() => setShared(false), 1500);

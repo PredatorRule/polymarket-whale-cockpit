@@ -215,9 +215,19 @@ export function LeaderboardTable({
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
                       <div>
-                        <div className="font-medium text-zinc-100">
+                        {/* Crawlable link to the SSR per-wallet page. Click is
+                            intercepted for the drawer; middle-click / SEO use href. */}
+                        <a
+                          href={`/wallet/${w.address}`}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            onSelect(w);
+                          }}
+                          className="font-medium text-zinc-100 hover:text-cyan-300"
+                        >
                           {w.ensName ?? truncateAddress(w.address)}
-                        </div>
+                        </a>
                         <div className="flex items-center gap-1.5">
                           <span className="font-mono text-xs text-zinc-500">
                             {truncateAddress(w.address)}
