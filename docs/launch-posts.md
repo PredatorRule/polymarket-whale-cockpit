@@ -11,7 +11,7 @@ Live tool: https://polymarket-whale-cockpit.pages.dev
 
 ## Reddit — r/algotrading
 
-**Title:** I built a free live Polymarket whale tracker (top wallets' PnL, win rate, open positions) — 100% public data, no login
+**Title:** I built a free live Polymarket whale tracker — win rate AND drawdown side by side, so "profitable wallet" stops looking magical
 
 **Body:**
 I kept wanting to see which Polymarket wallets are actually profitable and what
@@ -53,8 +53,9 @@ Public data only, no signup. Feedback welcome.
 **1/**
 Built a free Polymarket whale tracker 🐋
 
-Live leaderboard of the most profitable wallets — real PnL, win rate, drawdown,
-and open positions. Plus a live feed of every $5k+ trade.
+"Profitable wallet" stops looking magical when you see HOW it got there — so the
+leaderboard shows win rate AND max drawdown side by side, plus real PnL, volume,
+and open positions. Live feed of every $5k+ trade.
 
 No login. Public data. 👇
 https://polymarket-whale-cockpit.pages.dev
