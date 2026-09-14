@@ -16,8 +16,10 @@ crons = ["*/2 * * * *"]
 WATCH_WALLETS = ""
 # Public cockpit origin for the "Audit this wallet" button in each alert.
 COCKPIT_URL = "https://polymarket-whale-cockpit.pages.dev"
-# Only alert on trades at or above this USD notional.
-MIN_NOTIONAL_USD = "5000"
+# Only alert on trades at or above this USD notional. Set to the "WHALE" tier
+# ($25k) so the channel stays high-signal — a $5k floor floods it with routine
+# trades and feels spammy; big moves are what people pay for.
+MIN_NOTIONAL_USD = "25000"
 # Lookback window (minutes) each run scans for new trades. Comfortably larger
 # than the 2-minute cron so nothing slips between runs.
 LOOKBACK_MINUTES = "10"
