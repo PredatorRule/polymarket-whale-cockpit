@@ -73,9 +73,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     });
 
+    // After returning from the Stripe checkout tab, the plan may have flipped
+    // to 'pro' via the webhook. Re-fetch the profile on focus so Pro unlocks
+    // without a manual reload.
+    const onVisible = () => {
+      if (document.visibilityState !== "visible") return;
+      supabase.auth.getUser().then(({ data }) => {
+        if (active && data.user) void fetchProfile(data.user.id).then((p) => active && setProfile(p));
+      });
+    };
+    document.addEventListener("visibilitychange", onVisible);
+
     return () => {
       active = false;
       sub.subscription.unsubscribe();
+      document.removeEventListener("visibilitychange", onVisible);
     };
   }, []);
 

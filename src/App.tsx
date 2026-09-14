@@ -202,7 +202,11 @@ export default function App() {
 
       <TelegramModal open={telegramOpen} onClose={() => setTelegramOpen(false)} />
       <SignInModal open={signInOpen} onClose={() => setSignInOpen(false)} />
-      <UpgradeModal open={upgradeOpen} onClose={() => setUpgradeOpen(false)} />
+      <UpgradeModal
+        open={upgradeOpen}
+        onClose={() => setUpgradeOpen(false)}
+        onRequireSignIn={() => setSignInOpen(true)}
+      />
     </div>
   );
 }

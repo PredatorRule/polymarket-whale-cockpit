@@ -9,8 +9,16 @@ import { useAuth } from "../context/AuthContext";
  * client_reference_id / prefilled email so the webhook can map the resulting
  * subscription back to their Supabase profile.
  */
-export function UpgradeModal({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { user } = useAuth();
+export function UpgradeModal({
+  open,
+  onClose,
+  onRequireSignIn,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onRequireSignIn: () => void;
+}) {
+  const { user, configured } = useAuth();
 
   useEffect(() => {
     if (!open) return;
@@ -21,10 +29,14 @@ export function UpgradeModal({ open, onClose }: { open: boolean; onClose: () => 
 
   if (!open) return null;
 
+  // Must be signed in so the payment carries client_reference_id (the Supabase
+  // user id). Without it the webhook can't map the subscription to a profile
+  // and the user would pay but stay "free".
+  const needsSignIn = configured && !user;
+
   const checkoutUrl = (() => {
     if (!user) return STRIPE_CHECKOUT_URL;
     const u = new URL(STRIPE_CHECKOUT_URL);
-    // Stripe Payment Links accept client_reference_id + prefilled_email.
     u.searchParams.set("client_reference_id", user.id);
     if (user.email) u.searchParams.set("prefilled_email", user.email);
     return u.toString();
@@ -82,15 +94,35 @@ export function UpgradeModal({ open, onClose }: { open: boolean; onClose: () => 
             </span>
           </div>
 
-          <a
-            href={checkoutUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-1 flex w-full items-center justify-center gap-2 rounded-xl bg-amber-500 px-4 py-3 text-sm font-semibold text-zinc-950 transition-colors hover:bg-amber-400"
-          >
-            <Crown className="h-4 w-4" aria-hidden="true" />
-            Upgrade to Pro
-          </a>
+          {needsSignIn ? (
+            <>
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onRequireSignIn();
+                }}
+                className="mt-1 flex w-full items-center justify-center gap-2 rounded-xl bg-amber-500 px-4 py-3 text-sm font-semibold text-zinc-950 transition-colors hover:bg-amber-400"
+              >
+                <Crown className="h-4 w-4" aria-hidden="true" />
+                Sign in to upgrade
+              </button>
+              <p className="text-center text-xs text-zinc-500">
+                Takes 10 seconds — we link your payment to your account so Pro
+                unlocks automatically.
+              </p>
+            </>
+          ) : (
+            <a
+              href={checkoutUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-1 flex w-full items-center justify-center gap-2 rounded-xl bg-amber-500 px-4 py-3 text-sm font-semibold text-zinc-950 transition-colors hover:bg-amber-400"
+            >
+              <Crown className="h-4 w-4" aria-hidden="true" />
+              Upgrade to Pro
+            </a>
+          )}
         </div>
       </div>
     </div>
