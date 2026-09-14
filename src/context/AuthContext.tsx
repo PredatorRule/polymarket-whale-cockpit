@@ -61,6 +61,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         fetchProfile(data.session.user.id).then((p) => active && setProfile(p));
       }
       setLoading(false);
+
+      // After an OAuth/magic-link redirect, Supabase leaves the token in the
+      // URL hash. Once the session is loaded, strip it for a clean address bar.
+      if (window.location.hash.includes("access_token")) {
+        window.history.replaceState({}, "", window.location.pathname + window.location.search);
+      }
     });
 
     const { data: sub } = supabase.auth.onAuthStateChange((_event, newSession) => {
