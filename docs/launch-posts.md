@@ -1,50 +1,48 @@
 # Launch Posts — Polymarket Whale Cockpit
 
-Paste-ready copy to seed the first traffic. Post once per channel; the SEO +
-Apify Store discovery then compounds. Lead with the free tool, mention the
+Paste-ready copy to seed the first traffic. Lead with the free tool, mention the
 Telegram alerts as the optional paid layer — never overstate latency
 ("within about a minute", not "instant/3s").
 
 Live tool: https://polymarket-whale-cockpit.pages.dev
 
----
-
-## Reddit — r/algotrading
-
-**Title:** I built a free live Polymarket whale tracker — win rate AND drawdown side by side, so "profitable wallet" stops looking magical
-
-**Body:**
-I kept wanting to see which Polymarket wallets are actually profitable and what
-they're holding right now, so I built a free dashboard for it.
-
-- Live leaderboard of top wallets: real PnL, win rate, drawdown, open positions
-- A live feed of large trades ($5k+) across the whole platform, auto-refreshing
-- Paste any 0x address to audit it (your own wallet, or anyone's)
-- Everything is derived from Polymarket's public APIs — no login, no wallet connect
-
-It's fully client-side / static-hosted, so it costs me nothing to run. Built the
-matching + fee logic myself; happy to talk through how the PnL/win-rate numbers
-are computed if anyone's interested.
-
-Link: https://polymarket-whale-cockpit.pages.dev
-
-Not financial advice — a wallet's past PnL doesn't predict its next trade, and
-maker fills aren't reproducible by copying late. Treat it as research.
+> **READ FIRST — subreddit self-promo rules.** Many trading subs (notably
+> **r/algotrading**) ban self-promotion, product announcements, and link drops
+> outright — posting the tool there gets it removed and can get you banned.
+> Only post to communities that explicitly allow "I built this" / Show-and-Tell
+> content, and always check the sidebar + a mod message first. Reddit works best
+> when you're a genuine participant, not a driveby link. The X, Show HN, and
+> Indie Hackers channels below are promo-friendly by design.
 
 ---
 
-## Reddit — r/sportsbook / prediction-market subs
+## Reddit — HOW to do it without getting banned
 
-**Title:** Free tool: track the biggest Polymarket wallets and their live moves
+Do **not** cold-drop the link in r/algotrading. Options that comply:
 
-**Body:**
-Most of the top Polymarket volume right now is actually sports markets. I made a
-free tracker that shows the most profitable wallets, their win rates, and a live
-feed of large trades as they happen. You can also paste any wallet to audit it.
+1. **Contribute first, link only when relevant.** Answer real questions in
+   Polymarket/prediction-market threads; mention the tool only when it directly
+   answers someone, framed as "I built a thing that does exactly this" — never
+   as a standalone post.
+2. **Promo-tolerant subs only.** r/SideProject, r/webdev's showcase threads,
+   and prediction-market-specific subs that allow tools. Check each sidebar.
+3. **Value-first post (no link in body).** Share a genuine finding — e.g.
+   "I pulled the top 50 Polymarket wallets' win rate vs drawdown, here's what
+   surprised me" — with a chart/table. Put the tool link in a comment only if
+   asked or if the sub allows it. The insight is the post; the tool is the
+   footnote.
 
-https://polymarket-whale-cockpit.pages.dev
+**Value-first draft (works where data posts are welcome):**
 
-Public data only, no signup. Feedback welcome.
+> **Title:** Top Polymarket wallets: high win rate ≠ smooth ride (win-rate vs drawdown)
+>
+> I audited the current top wallets from Polymarket's public data. The headline
+> PnL hides a lot — several "profitable" wallets carry brutal drawdowns, and a
+> few high-win-rate ones are basically coinflips with size. Sharing the win-rate
+> vs max-drawdown breakdown because it changed how I read the leaderboard.
+> [chart/table] — happy to explain how the numbers are derived.
+
+(Only add the tool link if the sub permits and someone asks.)
 
 ---
 
