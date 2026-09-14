@@ -4,6 +4,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -44,6 +45,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Refs so the (mount-only) polling effect reads current values without
+  // re-subscribing on every state change.
+  const userIdRef = useRef<string | null>(null);
+  const isProRef = useRef(false);
+  userIdRef.current = user?.id ?? null;
+  isProRef.current = profile?.plan === "pro";
+
   useEffect(() => {
     if (!isSupabaseConfigured) {
       setLoading(false);
@@ -79,21 +87,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     });
 
-    // After returning from the Stripe checkout tab, the plan may have flipped
-    // to 'pro' via the webhook. Re-fetch the profile on focus so Pro unlocks
-    // without a manual reload.
-    const onVisible = () => {
-      if (document.visibilityState !== "visible") return;
+    // The plan can flip to 'pro' asynchronously (Stripe webhook, or a manual
+    // DB change during testing). Re-fetch the profile so Pro unlocks without a
+    // manual reload:
+    //  - on tab focus / regained visibility
+    //  - and, while signed-in-but-still-free, poll every 15s (auto-stops on Pro)
+    const reload = () => {
       supabase.auth.getUser().then(({ data }) => {
         if (active && data.user) void fetchProfile(data.user.id).then((p) => active && setProfile(p));
       });
     };
+    const onVisible = () => {
+      if (document.visibilityState === "visible") reload();
+    };
     document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", reload);
+
+    const poll = setInterval(() => {
+      // Cheap safety net: only poll when logged in and not yet Pro.
+      if (userIdRef.current && !isProRef.current) reload();
+    }, 15000);
 
     return () => {
       active = false;
       sub.subscription.unsubscribe();
       document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", reload);
+      clearInterval(poll);
     };
   }, []);
 
