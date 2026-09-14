@@ -5,6 +5,10 @@ export const PRO_PRICE_LABEL = "€9/mo";
 export const PRO_PRICE_AMOUNT = "€9";
 
 // Stripe Checkout link for the €9/mo Pro plan.
+// IMPORTANT: in the Stripe Payment Link settings, set the post-payment
+// confirmation page / redirect to:
+//   https://polymarket-whale-cockpit.pages.dev/upgrade/success
+// so buyers land on the "You're Pro ✅" page (which polls the profile).
 export const STRIPE_CHECKOUT_URL = "https://buy.stripe.com/aFabITbtteU23751OG4ko02";
 
 export const PRO_PERKS: string[] = [

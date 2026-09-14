@@ -10,6 +10,7 @@ import { WhaleDrawer } from "./components/WhaleDrawer";
 import { TelegramModal } from "./components/TelegramModal";
 import { SignInModal } from "./components/SignInModal";
 import { UpgradeModal } from "./components/UpgradeModal";
+import { UpgradeSuccess } from "./components/UpgradeSuccess";
 import { ExportButton } from "./components/ExportButton";
 import { useWhaleFilters } from "./hooks/useWhaleFilters";
 import { useWatchlist } from "./hooks/useWatchlist";
@@ -22,7 +23,24 @@ function walletFromUrl(): string | null {
   return p && /^0x[0-9a-fA-F]{40}$/.test(p) ? p.toLowerCase() : null;
 }
 
+/** Minimal path routing (no router dep): track the current pathname. */
+function usePathname(): string {
+  const [path, setPath] = useState(window.location.pathname);
+  useEffect(() => {
+    const onPop = () => setPath(window.location.pathname);
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
+  return path;
+}
+
 export default function App() {
+  const pathname = usePathname();
+  if (pathname === "/upgrade/success") return <UpgradeSuccess />;
+  return <Cockpit />;
+}
+
+function Cockpit() {
   const { isPro, session } = useAuth();
   // The moves endpoint enforces the free-tier delay server-side; the token
   // tells it whether the caller is Pro. Fresh trades never reach a free client.

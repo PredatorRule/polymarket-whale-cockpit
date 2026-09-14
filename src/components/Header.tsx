@@ -1,5 +1,5 @@
 // src/components/Header.tsx
-import { Radar, Crown } from "lucide-react";
+import { Radar } from "lucide-react";
 import { AuthWidget } from "./AuthWidget";
 
 export function Header({
@@ -37,14 +37,6 @@ export function Header({
         </div>
 
         <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={onUpgrade}
-            className="inline-flex items-center justify-center gap-2 rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-2 text-sm font-semibold text-amber-300 transition-colors hover:bg-amber-500/20"
-          >
-            <Crown className="h-4 w-4" aria-hidden="true" />
-            Go Pro!
-          </button>
           <AuthWidget onSignIn={onSignIn} onUpgrade={onUpgrade} />
         </div>
       </div>
