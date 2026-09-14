@@ -1,8 +1,10 @@
 // services/whale-alerts/src/index.ts
 import type { Env, WhaleTrade } from "./types";
 import { fetchRecentTrades, fetchGlobalWhaleTrades } from "./feed";
-import { formatAlert } from "./format";
+import { formatAlert, alertKeyboard } from "./format";
 import { sendTelegramMessage } from "./telegram";
+
+const DEFAULT_COCKPIT = "https://polymarket-whale-cockpit.pages.dev";
 
 // Single high-water-mark key: the newest trade timestamp we've alerted on.
 // One get + one put per run keeps us far under the KV free-tier 1000 puts/day
@@ -72,6 +74,7 @@ export async function runAlerts(env: Env): Promise<{ scanned: number; alerts: nu
   // (~20 msg/min) and avoid a burst.
   const maxPerRun = Math.min(Math.max(Number(env.MAX_ALERTS_PER_RUN ?? "8") || 8, 1), 20);
   const toSend = fresh.slice(0, maxPerRun);
+  const cockpitUrl = env.COCKPIT_URL || DEFAULT_COCKPIT;
 
   let alerts = 0;
   let newHighWater = highWaterTs;
@@ -80,6 +83,7 @@ export async function runAlerts(env: Env): Promise<{ scanned: number; alerts: nu
       env.TELEGRAM_BOT_TOKEN,
       env.TELEGRAM_CHAT_ID,
       formatAlert(trade),
+      alertKeyboard(trade, cockpitUrl),
     );
     if (result.ok) {
       alerts++;

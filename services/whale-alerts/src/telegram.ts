@@ -13,23 +13,27 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+type InlineKeyboard = { inline_keyboard: { text: string; url: string }[][] };
+
 /**
- * Send a Markdown message to a Telegram chat via the official Bot API.
- * Resilient: never throws; retries 429/5xx with exponential backoff and
- * honors Telegram's `retry_after` when present.
+ * Send an HTML message to a Telegram chat via the official Bot API, with an
+ * optional inline-button keyboard. Resilient: never throws; retries 429/5xx
+ * with exponential backoff and honors Telegram's `retry_after` when present.
  */
 export async function sendTelegramMessage(
   botToken: string,
   chatId: string,
   text: string,
+  replyMarkup?: InlineKeyboard,
 ): Promise<TelegramResult> {
   const url = `${TELEGRAM_API}/bot${botToken}/sendMessage`;
-  const body = {
+  const body: Record<string, unknown> = {
     chat_id: chatId,
     text,
-    parse_mode: "Markdown",
+    parse_mode: "HTML",
     disable_web_page_preview: true,
   };
+  if (replyMarkup) body.reply_markup = replyMarkup;
 
   let lastStatus = 0;
   let lastError = "";

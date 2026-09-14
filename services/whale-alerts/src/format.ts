@@ -29,9 +29,19 @@ export function formatPrice(price: number): string {
   return `$${price.toFixed(2)} (${cents}\u00a2)`;
 }
 
-/** Escape Telegram Markdown (legacy) reserved characters in free text. */
-export function escapeMarkdown(text: string): string {
-  return text.replace(/([_*`\[])/g, "\\$1");
+/** Escape HTML reserved chars for Telegram parse_mode=HTML (robust for titles). */
+export function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+/** Size tier label + emoji, so scanning the channel conveys magnitude fast. */
+export function sizeTier(notionalUsd: number): { emoji: string; label: string } {
+  if (notionalUsd >= 100_000) return { emoji: "\ud83d\udc0b", label: "MEGA WHALE" }; // 🐋
+  if (notionalUsd >= 25_000) return { emoji: "\ud83e\udd88", label: "WHALE" }; // 🦈
+  return { emoji: "\ud83d\udca6", label: "BIG TRADE" }; // 💦
 }
 
 /** Normalize a raw public trade into a WhaleTrade, or null if unusable. */
@@ -66,19 +76,38 @@ export function normalizeTrade(raw: RawTrade): WhaleTrade | null {
   };
 }
 
-/** Build the Telegram Markdown message body for a whale trade. */
+/** Build the Telegram HTML message body for a whale trade. */
 export function formatAlert(t: WhaleTrade): string {
+  const tier = sizeTier(t.notionalUsd);
+  // Directional cue: buys green, sells red; YES/NO shown explicitly.
+  const dir = t.side === "SELL" ? "\ud83d\udd34" : "\ud83d\udfe2"; // 🔴 / 🟢
   const profile = `${POLY_PROFILE}${t.wallet}`;
+
   const lines = [
-    "\ud83d\udea8 *WHALE MOVEMENT DETECTED*",
+    `${tier.emoji} <b>${tier.label}</b> · ${dir} <b>${t.action}</b>`,
     "",
-    `*Trader:* [${maskAddress(t.wallet)}](${profile})`,
-    `*Market:* ${escapeMarkdown(t.title)}`,
-    `*Action:* ${t.action}`,
-    `*Trade Size:* ${formatUsd(t.notionalUsd)}`,
-    `*Price:* ${formatPrice(t.priceUsd)}`,
+    `<b>${escapeHtml(t.title)}</b>`,
     "",
-    `[View market \u2197](${t.eventUrl})`,
+    `\ud83d\udcb0 Size: <b>${formatUsd(t.notionalUsd)}</b>`,
+    `\ud83c\udff7 Price: ${formatPrice(t.priceUsd)}`,
+    `\ud83d\udc64 Trader: <a href="${profile}">${maskAddress(t.wallet)}</a>`,
   ];
   return lines.join("\n");
+}
+
+/**
+ * Inline keyboard for an alert: a row driving to the event, and a row driving
+ * BACK to our own cockpit wallet page (the growth loop — every alert markets
+ * the site). cockpitUrl has no trailing slash requirement.
+ */
+export function alertKeyboard(t: WhaleTrade, cockpitUrl: string): {
+  inline_keyboard: { text: string; url: string }[][];
+} {
+  const base = cockpitUrl.replace(/\/+$/, "");
+  return {
+    inline_keyboard: [
+      [{ text: "\ud83d\udcc8 View market", url: t.eventUrl }],
+      [{ text: "\ud83d\udd0d Audit this wallet", url: `${base}/wallet/${t.wallet}` }],
+    ],
+  };
 }

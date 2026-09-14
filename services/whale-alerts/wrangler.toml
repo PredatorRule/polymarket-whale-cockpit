@@ -14,6 +14,8 @@ crons = ["*/2 * * * *"]
 # Comma-separated wallets to monitor. Leave empty to track GLOBAL large trades
 # across the whole platform (the real "whale movement" feed).
 WATCH_WALLETS = ""
+# Public cockpit origin for the "Audit this wallet" button in each alert.
+COCKPIT_URL = "https://polymarket-whale-cockpit.pages.dev"
 # Only alert on trades at or above this USD notional.
 MIN_NOTIONAL_USD = "5000"
 # Lookback window (minutes) each run scans for new trades. Comfortably larger

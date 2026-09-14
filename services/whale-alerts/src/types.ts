@@ -9,6 +9,8 @@ export interface Env {
   MIN_NOTIONAL_USD?: string;
   MAX_ALERTS_PER_RUN?: string;
   LOOKBACK_MINUTES?: string;
+  // Public cockpit origin used for the "Audit wallet" deep link in alerts.
+  COCKPIT_URL?: string;
   // KV binding for dedupe state.
   ALERT_STATE: KVNamespace;
 }
