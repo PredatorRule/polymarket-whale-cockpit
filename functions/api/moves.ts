@@ -3,9 +3,14 @@
 // /api/whales so it has its own Cloudflare subrequest budget (free plan caps
 // ~50 subrequests per invocation) — this makes ONE upstream call and is fast.
 
+import { getAuthStatus, type AuthEnv } from "../_lib/auth";
+
 const DATA_BASE = "https://data-api.polymarket.com";
 
-interface Env {
+// Non-Pro callers only see trades at least this old (server-enforced).
+const FREE_DELAY_SECONDS = 10 * 60;
+
+interface Env extends AuthEnv {
   MOVES_MIN_NOTIONAL?: string;
   MOVES_CACHE_SECONDS?: string;
 }
@@ -40,13 +45,19 @@ export interface RecentMove {
   timestamp: number;
 }
 
-export const onRequest = async (context: { env: Env }): Promise<Response> => {
-  const { env } = context;
+export const onRequest = async (context: {
+  request: Request;
+  env: Env;
+}): Promise<Response> => {
+  const { request, env } = context;
   const minNotional = Number(env.MOVES_MIN_NOTIONAL ?? "5000") || 5000;
   const cacheSeconds = Number(env.MOVES_CACHE_SECONDS ?? "45") || 45;
+
+  // Plan check is per-user, so responses must NOT be shared-cached.
+  const auth = await getAuthStatus(request, env);
   const headers: Record<string, string> = {
     "content-type": "application/json",
-    "cache-control": `public, max-age=${cacheSeconds}`,
+    "cache-control": "private, no-store",
     "access-control-allow-origin": "*",
   };
 
@@ -90,8 +101,23 @@ export const onRequest = async (context: { env: Env }): Promise<Response> => {
     }
     moves.sort((a, b) => b.timestamp - a.timestamp);
 
+    // Server-enforced gating: non-Pro callers only get trades older than the
+    // delay window. Slicing happens BEFORE serialization, so the fresh data
+    // never leaves the server for a free user (can't be un-blurred in devtools).
+    const isPro = auth.isPro;
+    const cutoff = Math.floor(Date.now() / 1000) - FREE_DELAY_SECONDS;
+    const gated = isPro ? moves : moves.filter((m) => m.timestamp <= cutoff);
+    const delayedCount = isPro ? 0 : moves.length - gated.length;
+
     return new Response(
-      JSON.stringify({ ok: true, count: moves.length, moves: moves.slice(0, 30) }),
+      JSON.stringify({
+        ok: true,
+        isPro,
+        delaySeconds: isPro ? 0 : FREE_DELAY_SECONDS,
+        delayedCount,
+        count: gated.length,
+        moves: gated.slice(0, 30),
+      }),
       { status: 200, headers },
     );
   } catch (err) {

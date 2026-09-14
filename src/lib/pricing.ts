@@ -5,8 +5,7 @@ export const PRO_PRICE_LABEL = "€9/mo";
 export const PRO_PRICE_AMOUNT = "€9";
 
 // Stripe Checkout link for the €9/mo Pro plan.
-// NOTE: update this to the €9 Payment Link once created in Stripe.
-export const STRIPE_CHECKOUT_URL = "https://buy.stripe.com/eVqdR14115jsgXV64W4ko01";
+export const STRIPE_CHECKOUT_URL = "https://buy.stripe.com/aFabITbtteU23751OG4ko02";
 
 export const PRO_PERKS: string[] = [
   "Zero-delay live whale feed (free tier is delayed 10 min)",

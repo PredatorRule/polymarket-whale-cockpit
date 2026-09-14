@@ -1,5 +1,5 @@
 // src/App.tsx
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { Loader2, AlertTriangle } from "lucide-react";
 import { Header } from "./components/Header";
 import { StatCards } from "./components/StatCards";
@@ -16,10 +16,6 @@ import { useWatchlist } from "./hooks/useWatchlist";
 import { useWhaleData, lookupWallet } from "./data/useWhaleData";
 import { useAuth } from "./context/AuthContext";
 import type { WhaleTrader } from "./types/whale";
-import type { RecentMove } from "./data/useWhaleData";
-
-// Free tier sees the live feed delayed by this many seconds.
-const FREE_DELAY_SECONDS = 10 * 60;
 
 function walletFromUrl(): string | null {
   const p = new URLSearchParams(window.location.search).get("wallet");
@@ -27,8 +23,11 @@ function walletFromUrl(): string | null {
 }
 
 export default function App() {
-  const { whales, recentMoves, source, lastUpdated, trackedCount } = useWhaleData();
-  const { isPro } = useAuth();
+  const { isPro, session } = useAuth();
+  // The moves endpoint enforces the free-tier delay server-side; the token
+  // tells it whether the caller is Pro. Fresh trades never reach a free client.
+  const { whales, recentMoves, serverDelayedCount, source, lastUpdated, trackedCount } =
+    useWhaleData(session?.access_token);
   const watchlist = useWatchlist();
   const filters = useWhaleFilters(whales, recentMoves, watchlist.isWatched);
   const [selected, setSelected] = useState<WhaleTrader | null>(null);
@@ -39,20 +38,6 @@ export default function App() {
   const [lookupError, setLookupError] = useState<string | null>(null);
 
   const ready = source === "live" && whales.length > 0;
-
-  // Live-feed gating: Pro sees everything now; free users see only trades
-  // older than the delay window, and a count of how many are being withheld.
-  const { visibleMoves, delayedCount } = useMemo(() => {
-    if (isPro) return { visibleMoves: filters.moves, delayedCount: 0 };
-    const cutoff = Math.floor(Date.now() / 1000) - FREE_DELAY_SECONDS;
-    const shown: RecentMove[] = [];
-    let delayed = 0;
-    for (const m of filters.moves) {
-      if (m.timestamp <= cutoff) shown.push(m);
-      else delayed++;
-    }
-    return { visibleMoves: shown, delayedCount: delayed };
-  }, [filters.moves, isPro]);
 
   const openWallet = async (address: string, pushUrl: boolean) => {
     setLookupLoading(true);
@@ -157,12 +142,15 @@ export default function App() {
             <StatCards whales={filters.result} moves={filters.moves} />
 
             <div className="flex items-center justify-end">
-              <ExportButton rows={filters.result} onLocked={() => setUpgradeOpen(true)} />
+              <ExportButton
+                accessToken={session?.access_token}
+                onLocked={() => setUpgradeOpen(true)}
+              />
             </div>
 
             <RecentMoves
-              moves={visibleMoves}
-              delayedCount={delayedCount}
+              moves={filters.moves}
+              delayedCount={serverDelayedCount}
               isPro={isPro}
               onUpgrade={() => setUpgradeOpen(true)}
             />

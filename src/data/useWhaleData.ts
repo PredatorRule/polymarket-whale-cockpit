@@ -59,6 +59,9 @@ interface ApiResponse {
 interface MovesResponse {
   ok: boolean;
   moves: RecentMove[];
+  isPro?: boolean;
+  delayedCount?: number;
+  delaySeconds?: number;
 }
 
 /** Classify from real position titles; unmatched titles are honestly "Other". */
@@ -187,20 +190,27 @@ export async function lookupWallet(address: string): Promise<WhaleTrader | null>
 // cheap and mostly hit cache; 60s keeps the board feeling live without spam.
 const REFRESH_MS = 60_000;
 
-export function useWhaleData(): {
+export function useWhaleData(accessToken: string | null | undefined): {
   whales: WhaleTrader[];
   recentMoves: RecentMove[];
+  serverDelayedCount: number;
   source: DataSource;
   lastUpdated: number | null;
   trackedCount: number;
 } {
   const [whales, setWhales] = useState<WhaleTrader[]>([]);
   const [recentMoves, setRecentMoves] = useState<RecentMove[]>([]);
+  const [serverDelayedCount, setServerDelayedCount] = useState(0);
   const [source, setSource] = useState<DataSource>("loading");
   const [lastUpdated, setLastUpdated] = useState<number | null>(null);
 
   useEffect(() => {
     let cancelled = false;
+
+    // Only /api/moves is plan-aware, so only it needs the bearer token.
+    const authHeaders: HeadersInit = accessToken
+      ? { authorization: `Bearer ${accessToken}` }
+      : {};
 
     const load = async () => {
       // Leaderboard and the live moves feed are separate endpoints so each has
@@ -223,11 +233,16 @@ export function useWhaleData(): {
       }
 
       // Moves are best-effort; a failure here never breaks the leaderboard.
+      // The server enforces the free-tier delay, so the client just renders
+      // whatever it's given plus the count of moves withheld server-side.
       try {
-        const mr = await fetch("/api/moves", { cache: "no-store" });
+        const mr = await fetch("/api/moves", { cache: "no-store", headers: authHeaders });
         if (mr.ok) {
           const md = (await mr.json()) as MovesResponse;
-          if (!cancelled && md.ok) setRecentMoves(md.moves ?? []);
+          if (!cancelled && md.ok) {
+            setRecentMoves(md.moves ?? []);
+            setServerDelayedCount(md.delayedCount ?? 0);
+          }
         }
       } catch {
         /* keep last good moves */
@@ -249,7 +264,14 @@ export function useWhaleData(): {
       document.removeEventListener("visibilitychange", onVisible);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [accessToken]);
 
-  return { whales, recentMoves, source, lastUpdated, trackedCount: whales.length };
+  return {
+    whales,
+    recentMoves,
+    serverDelayedCount,
+    source,
+    lastUpdated,
+    trackedCount: whales.length,
+  };
 }
