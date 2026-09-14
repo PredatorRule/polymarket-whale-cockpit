@@ -64,6 +64,7 @@ export function normalizeTrade(raw: RawTrade): WhaleTrade | null {
     // Stable dedupe key: txn + asset side + rounded price/size + ts.
     id: `${txn}:${outcome}:${side}:${price.toFixed(4)}:${shares.toFixed(2)}:${timestamp}`,
     wallet,
+    conditionId: String(raw.conditionId ?? ""),
     title: String(raw.title ?? "Untitled market"),
     eventUrl: eventSlug ? `${POLY_EVENT}${eventSlug}` : `${POLY_PROFILE}${wallet}`,
     outcome,
@@ -73,7 +74,46 @@ export function normalizeTrade(raw: RawTrade): WhaleTrade | null {
     shares,
     notionalUsd,
     timestamp,
+    fillCount: 1,
   };
+}
+
+/**
+ * Collapse a scale-in burst into one alert: same wallet + market + side +
+ * outcome trades combine into a single WhaleTrade with summed notional/shares,
+ * volume-weighted price, latest timestamp, and a fillCount. This is what stops
+ * "$9,899 / $9,900 / $9,899" spamming the channel as three near-identical pings.
+ */
+export function aggregateTrades(trades: WhaleTrade[]): WhaleTrade[] {
+  const groups = new Map<string, WhaleTrade[]>();
+  for (const t of trades) {
+    // Group key intentionally excludes price/size/txn so scale-ins merge.
+    const key = `${t.wallet}:${t.conditionId || t.title}:${t.side}:${t.outcome}`;
+    const arr = groups.get(key);
+    if (arr) arr.push(t);
+    else groups.set(key, [t]);
+  }
+
+  const out: WhaleTrade[] = [];
+  for (const arr of groups.values()) {
+    if (arr.length === 1) {
+      out.push(arr[0]);
+      continue;
+    }
+    const notionalUsd = arr.reduce((s, t) => s + t.notionalUsd, 0);
+    const shares = arr.reduce((s, t) => s + t.shares, 0);
+    const latest = arr.reduce((a, b) => (b.timestamp > a.timestamp ? b : a));
+    // Volume-weighted average price across the fills.
+    const vwap = shares > 0 ? arr.reduce((s, t) => s + t.priceUsd * t.shares, 0) / shares : latest.priceUsd;
+    out.push({
+      ...latest,
+      priceUsd: vwap,
+      shares,
+      notionalUsd,
+      fillCount: arr.length,
+    });
+  }
+  return out;
 }
 
 /** Build the Telegram HTML message body for a whale trade. */
@@ -83,13 +123,24 @@ export function formatAlert(t: WhaleTrade): string {
   const dir = t.side === "SELL" ? "\ud83d\udd34" : "\ud83d\udfe2"; // 🔴 / 🟢
   const profile = `${POLY_PROFILE}${t.wallet}`;
 
+  // When several fills were merged, label the size as an aggregate and note
+  // that the price is a volume-weighted average across N fills.
+  const sizeLabel =
+    t.fillCount > 1
+      ? `\ud83d\udcb0 Size: <b>${formatUsd(t.notionalUsd)}</b> <i>(${t.fillCount} fills)</i>`
+      : `\ud83d\udcb0 Size: <b>${formatUsd(t.notionalUsd)}</b>`;
+  const priceLabel =
+    t.fillCount > 1
+      ? `\ud83c\udff7 Avg price: ${formatPrice(t.priceUsd)}`
+      : `\ud83c\udff7 Price: ${formatPrice(t.priceUsd)}`;
+
   const lines = [
     `${tier.emoji} <b>${tier.label}</b> · ${dir} <b>${t.action}</b>`,
     "",
     `<b>${escapeHtml(t.title)}</b>`,
     "",
-    `\ud83d\udcb0 Size: <b>${formatUsd(t.notionalUsd)}</b>`,
-    `\ud83c\udff7 Price: ${formatPrice(t.priceUsd)}`,
+    sizeLabel,
+    priceLabel,
     `\ud83d\udc64 Trader: <a href="${profile}">${maskAddress(t.wallet)}</a>`,
   ];
   return lines.join("\n");

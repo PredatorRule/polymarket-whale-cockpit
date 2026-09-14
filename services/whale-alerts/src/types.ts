@@ -34,13 +34,15 @@ export interface RawTrade {
 export interface WhaleTrade {
   id: string; // dedupe key
   wallet: string;
+  conditionId: string; // market id, for grouping scale-ins
   title: string;
   eventUrl: string;
   outcome: "YES" | "NO";
   side: "BUY" | "SELL";
   action: string; // "BOUGHT YES" | "BOUGHT NO" | "SOLD YES" | "SOLD NO"
-  priceUsd: number; // 0..1
+  priceUsd: number; // 0..1 (volume-weighted when aggregated)
   shares: number;
   notionalUsd: number;
-  timestamp: number; // seconds
+  timestamp: number; // seconds (latest fill when aggregated)
+  fillCount: number; // how many raw fills this alert represents (>=1)
 }

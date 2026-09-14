@@ -1,7 +1,7 @@
 // services/whale-alerts/src/index.ts
 import type { Env, WhaleTrade } from "./types";
 import { fetchRecentTrades, fetchGlobalWhaleTrades } from "./feed";
-import { formatAlert, alertKeyboard } from "./format";
+import { formatAlert, alertKeyboard, aggregateTrades } from "./format";
 import { sendTelegramMessage } from "./telegram";
 
 const DEFAULT_COCKPIT = "https://polymarket-whale-cockpit.pages.dev";
@@ -56,9 +56,11 @@ export async function runAlerts(env: Env): Promise<{ scanned: number; alerts: nu
   const hwmRaw = await env.ALERT_STATE.get(HIGH_WATER_KEY);
   const highWaterTs = hwmRaw ? Number(hwmRaw) || 0 : 0;
 
-  // Oldest -> newest so we deliver in chronological order and advance the HWM
-  // monotonically.
-  const fresh = candidates
+  // Collapse scale-in bursts (same wallet+market+side) into one alert, then
+  // keep only what's newer than the high-water mark. Aggregation runs on the
+  // full window so a burst split across the HWM still merges correctly.
+  const aggregated = aggregateTrades(candidates);
+  const fresh = aggregated
     .filter((t) => t.timestamp > highWaterTs)
     .sort((a, b) => a.timestamp - b.timestamp);
 
@@ -112,9 +114,10 @@ async function debugScan(env: Env): Promise<Record<string, unknown>> {
   const explicit = parseWallets(env.WATCH_WALLETS);
 
   const global = await fetchGlobalWhaleTrades(sinceTs, minNotional).catch(() => []);
-  const sample = global
+  const merged = aggregateTrades(global);
+  const sample = merged
     .slice(0, 5)
-    .map((t) => ({ wallet: t.wallet, action: t.action, notionalUsd: Math.round(t.notionalUsd), title: t.title, ageMin: Math.round(Date.now() / 1000 - t.timestamp) / 60 }));
+    .map((t) => ({ wallet: t.wallet, action: t.action, notionalUsd: Math.round(t.notionalUsd), fills: t.fillCount, title: t.title, ageMin: Math.round(Date.now() / 1000 - t.timestamp) / 60 }));
 
   return {
     secretsConfigured: Boolean(env.TELEGRAM_BOT_TOKEN && env.TELEGRAM_CHAT_ID),
@@ -124,7 +127,8 @@ async function debugScan(env: Env): Promise<Record<string, unknown>> {
     lookbackMinutes: lookbackMin,
     nowTs: Math.floor(Date.now() / 1000),
     sinceTs,
-    globalQualified: global.length,
+    rawQualified: global.length,
+    afterAggregation: merged.length,
     sample,
   };
 }

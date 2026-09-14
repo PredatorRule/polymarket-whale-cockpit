@@ -9,6 +9,7 @@ import {
   escapeHtml,
   sizeTier,
   alertKeyboard,
+  aggregateTrades,
 } from "../src/format";
 import type { RawTrade } from "../src/types";
 
@@ -112,6 +113,67 @@ describe("formatAlert", () => {
     const msg = formatAlert(evil);
     expect(msg).toContain("A &lt;script&gt; &amp; B");
     expect(msg).not.toContain("<script>");
+  });
+});
+
+describe("aggregateTrades", () => {
+  function mk(over: Partial<RawTrade>, i: number): RawTrade {
+    return {
+      transactionHash: `0x${i}`,
+      proxyWallet: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      conditionId: "cond-1",
+      title: "Jacksonville State Team Total: O/U 23.5",
+      eventSlug: "jsu",
+      outcome: "YES",
+      side: "BUY",
+      price: 0.5,
+      size: 20000,
+      timestamp: 1_760_000_000 + i,
+      ...over,
+    };
+  }
+
+  it("merges same wallet+market+side scale-ins into one, summing size", () => {
+    const trades = [mk({ price: 0.49 }, 1), mk({ price: 0.5 }, 2), mk({ price: 0.51 }, 3)]
+      .map(normalizeTrade)
+      .filter((t): t is NonNullable<typeof t> => t !== null);
+    const merged = aggregateTrades(trades);
+    expect(merged).toHaveLength(1);
+    expect(merged[0].fillCount).toBe(3);
+    expect(merged[0].notionalUsd).toBeCloseTo(0.49 * 20000 + 0.5 * 20000 + 0.51 * 20000, 4);
+    expect(merged[0].shares).toBe(60000);
+    // VWAP == 0.50 here (equal sizes), and takes the latest timestamp.
+    expect(merged[0].priceUsd).toBeCloseTo(0.5, 6);
+    expect(merged[0].timestamp).toBe(1_760_000_003);
+  });
+
+  it("does NOT merge different sides or different markets", () => {
+    const trades = [
+      mk({}, 1),
+      mk({ side: "SELL" }, 2),
+      mk({ conditionId: "cond-2", title: "Other market" }, 3),
+    ]
+      .map(normalizeTrade)
+      .filter((t): t is NonNullable<typeof t> => t !== null);
+    const merged = aggregateTrades(trades);
+    expect(merged).toHaveLength(3);
+    expect(merged.every((t) => t.fillCount === 1)).toBe(true);
+  });
+});
+
+describe("formatAlert aggregation label", () => {
+  it("shows fill count + avg price when merged", () => {
+    const merged = aggregateTrades(
+      [
+        { transactionHash: "0x1", proxyWallet: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", conditionId: "c", title: "M", eventSlug: "m", outcome: "YES", side: "BUY", price: 0.4, size: 30000, timestamp: 1 },
+        { transactionHash: "0x2", proxyWallet: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", conditionId: "c", title: "M", eventSlug: "m", outcome: "YES", side: "BUY", price: 0.6, size: 30000, timestamp: 2 },
+      ]
+        .map(normalizeTrade)
+        .filter((t): t is NonNullable<typeof t> => t !== null),
+    );
+    const msg = formatAlert(merged[0]);
+    expect(msg).toContain("(2 fills)");
+    expect(msg).toContain("Avg price");
   });
 });
 
