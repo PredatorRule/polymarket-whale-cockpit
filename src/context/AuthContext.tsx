@@ -33,10 +33,26 @@ async function fetchProfile(userId: string): Promise<Profile | null> {
     .eq("id", userId)
     .maybeSingle();
   if (error) {
-    console.error("profile fetch failed:", error.message);
+    // Verbose on purpose: an RLS block shows up here (code 42501 / empty data).
+    console.error("[whale-cockpit] profile fetch failed:", {
+      message: error.message,
+      code: error.code,
+      details: error.details,
+      hint: error.hint,
+      userId,
+    });
     return null;
   }
-  return (data as Profile) ?? null;
+  if (!data) {
+    console.warn(
+      "[whale-cockpit] no profile row visible for",
+      userId,
+      "— likely a missing RLS SELECT policy or no matching row.",
+    );
+    return null;
+  }
+  console.info("[whale-cockpit] profile loaded:", data.plan);
+  return data as Profile;
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
