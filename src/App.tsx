@@ -161,6 +161,7 @@ function Cockpit() {
             <div className="flex items-center justify-end">
               <ExportButton
                 accessToken={session?.access_token}
+                isPro={isPro}
                 onLocked={() => setUpgradeOpen(true)}
               />
             </div>

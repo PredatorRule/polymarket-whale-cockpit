@@ -9,9 +9,11 @@ import { Download, Lock, Loader2 } from "lucide-react";
  */
 export function ExportButton({
   accessToken,
+  isPro,
   onLocked,
 }: {
   accessToken: string | null | undefined;
+  isPro: boolean;
   onLocked: () => void;
 }) {
   const [busy, setBusy] = useState(false);
@@ -51,7 +53,7 @@ export function ExportButton({
     >
       {busy ? (
         <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
-      ) : accessToken ? (
+      ) : isPro ? (
         <Download className="h-3.5 w-3.5" aria-hidden="true" />
       ) : (
         <Lock className="h-3.5 w-3.5 text-amber-400" aria-hidden="true" />
