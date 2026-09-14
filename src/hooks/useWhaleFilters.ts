@@ -90,6 +90,8 @@ export function useWhaleFilters(
           return w.winRate;
         case "totalVolume":
           return w.totalVolume;
+        case "maxDrawdownUsdc":
+          return w.maxDrawdownUsdc;
         case "rank":
         default:
           return w.rank;

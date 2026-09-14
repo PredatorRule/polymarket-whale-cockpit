@@ -140,6 +140,7 @@ function adaptOne(w: ApiWhale, rank: number): WhaleTrader {
     wins: w.wins,
     losses: w.losses,
     totalVolume: w.totalVolume,
+    maxDrawdownUsdc: w.maxDrawdownUsdc ?? 0,
     activePositionsCount: w.activePositionsCount,
     category,
     badges: badgesFor(w),

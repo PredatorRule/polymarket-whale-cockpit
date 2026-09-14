@@ -133,7 +133,7 @@ export function LeaderboardTable({
   return (
     <div className="overflow-hidden rounded-xl border border-zinc-800 bg-surface shadow-lg shadow-black/20">
       <div className="overflow-x-auto scroll-thin">
-        <table className="w-full min-w-[960px] border-collapse text-sm">
+        <table className="w-full min-w-[1080px] border-collapse text-sm">
           <thead>
             <tr className="border-b border-zinc-800 bg-zinc-900/40 text-left">
               <th className="w-8 px-2 py-3" aria-label="Watch" />
@@ -157,6 +157,15 @@ export function LeaderboardTable({
               </th>
               <th className="px-4 py-3">
                 <SortHeader label="Win Rate" column="winRate" sort={sort} onSort={onSort} />
+              </th>
+              <th className="w-28 px-4 py-3 text-right">
+                <SortHeader
+                  label="Max Drawdown"
+                  column="maxDrawdownUsdc"
+                  sort={sort}
+                  onSort={onSort}
+                  align="right"
+                />
               </th>
               <th className="w-28 px-4 py-3 text-right">
                 <SortHeader
@@ -291,6 +300,16 @@ export function LeaderboardTable({
                     </div>
                   </td>
 
+                  {/* Max drawdown — the "how did it get there" context beside win rate */}
+                  <td className="w-28 px-4 py-3 text-right">
+                    <span
+                      className="whitespace-nowrap font-mono text-sm tabular-nums text-rose-400/90"
+                      title="Largest peak-to-trough drop in realized PnL"
+                    >
+                      {w.maxDrawdownUsdc > 0 ? `-${formatCompactUsd(w.maxDrawdownUsdc)}` : "—"}
+                    </span>
+                  </td>
+
                   {/* Volume */}
                   <td className="w-28 px-4 py-3 text-right">
                     <span className="whitespace-nowrap font-mono text-sm tabular-nums text-zinc-300">
@@ -329,7 +348,7 @@ export function LeaderboardTable({
             })}
             {whales.length === 0 && (
               <tr>
-                <td colSpan={9} className="px-4 py-12 text-center text-sm text-zinc-500">
+                <td colSpan={10} className="px-4 py-12 text-center text-sm text-zinc-500">
                   No wallets match your filters.
                 </td>
               </tr>

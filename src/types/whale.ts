@@ -39,6 +39,7 @@ export interface WhaleTrader {
   wins: number;
   losses: number;
   totalVolume: number; // dollars
+  maxDrawdownUsdc: number; // largest peak-to-trough drop in realized PnL
   activePositionsCount: number;
   category: WhaleCategory;
   badges: string[];
@@ -57,6 +58,7 @@ export type SortKey =
   | "totalPnl"
   | "winRate"
   | "totalVolume"
+  | "maxDrawdownUsdc"
   | "pnl30d"
   | "pnl7d";
 
