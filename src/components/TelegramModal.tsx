@@ -3,8 +3,10 @@ import { useEffect } from "react";
 import { X, Check, Zap, Bell, ShieldCheck, Link2, Send } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
-// Stripe Checkout link for the €9/mo subscription.
-const CHECKOUT_URL = "https://buy.stripe.com/eVqdR14115jsgXV64W4ko01";
+import { STRIPE_CHECKOUT_URL } from "../lib/pricing";
+
+// €9/mo checkout (shared single source of truth).
+const CHECKOUT_URL = STRIPE_CHECKOUT_URL;
 
 interface ValueProp {
   icon: LucideIcon;

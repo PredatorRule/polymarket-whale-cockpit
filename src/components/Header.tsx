@@ -1,14 +1,12 @@
 // src/components/Header.tsx
-import { Radar, Send } from "lucide-react";
+import { Radar, Crown } from "lucide-react";
 import { AuthWidget } from "./AuthWidget";
 
 export function Header({
-  onOpenTelegram,
   trackedCount,
   onSignIn,
   onUpgrade,
 }: {
-  onOpenTelegram: () => void;
   trackedCount: number;
   onSignIn: () => void;
   onUpgrade: () => void;
@@ -41,12 +39,11 @@ export function Header({
         <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={onOpenTelegram}
-            className="inline-flex items-center justify-center gap-2 rounded-xl border border-cyan-500/40 bg-cyan-500/10 px-4 py-2 text-sm font-semibold text-cyan-300 transition-colors hover:bg-cyan-500/20"
+            onClick={onUpgrade}
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-2 text-sm font-semibold text-amber-300 transition-colors hover:bg-amber-500/20"
           >
-            <Send className="h-4 w-4" aria-hidden="true" />
-            <span className="hidden sm:inline">Get Real-Time Signals</span>
-            <span className="sm:hidden">Signals</span>
+            <Crown className="h-4 w-4" aria-hidden="true" />
+            Go Pro!
           </button>
           <AuthWidget onSignIn={onSignIn} onUpgrade={onUpgrade} />
         </div>

@@ -84,7 +84,6 @@ export default function App() {
   return (
     <div className="min-h-screen bg-zinc-950 bg-[radial-gradient(ellipse_at_top,rgba(16,185,129,0.05),transparent_55%)]">
       <Header
-        onOpenTelegram={() => setTelegramOpen(true)}
         trackedCount={trackedCount}
         onSignIn={() => setSignInOpen(true)}
         onUpgrade={() => setUpgradeOpen(true)}

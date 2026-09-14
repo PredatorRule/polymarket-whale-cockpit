@@ -8,8 +8,9 @@ export const PRO_PRICE_AMOUNT = "€9";
 export const STRIPE_CHECKOUT_URL = "https://buy.stripe.com/aFabITbtteU23751OG4ko02";
 
 export const PRO_PERKS: string[] = [
-  "Zero-delay live whale feed (free tier is delayed 10 min)",
-  "Unlimited CSV exports of the leaderboard & wallets",
-  "Advanced wallet analytics — drawdown, PnL breakdown, concentration",
-  "VIP Telegram alerts for large fills",
+  "Zero-delay live whale feed — see $25k+ fills the moment they land (free tier is delayed 10 min)",
+  "Advanced wallet analytics — max drawdown, 7-day PnL, open exposure & full position breakdown",
+  "Unlimited CSV exports of the leaderboard & any audited wallet",
+  "VIP Telegram alerts pushing every large whale fill within ~a minute",
+  "Audit any wallet in full — win rate, drawdown and live positions with nothing blurred",
 ];
