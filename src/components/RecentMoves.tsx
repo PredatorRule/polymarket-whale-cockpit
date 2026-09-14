@@ -1,6 +1,6 @@
 // src/components/RecentMoves.tsx
 import { useEffect, useRef, useState } from "react";
-import { Zap } from "lucide-react";
+import { Zap, Lock } from "lucide-react";
 import type { RecentMove } from "../data/useWhaleData";
 import { formatCompactUsd, truncateAddress } from "../lib/format";
 import { OutcomePill } from "./Badge";
@@ -19,7 +19,17 @@ function moveKey(m: RecentMove): string {
   return `${m.wallet}-${m.timestamp}-${m.title}-${m.notionalUsd}`;
 }
 
-export function RecentMoves({ moves }: { moves: RecentMove[] }) {
+export function RecentMoves({
+  moves,
+  delayedCount = 0,
+  isPro = false,
+  onUpgrade,
+}: {
+  moves: RecentMove[];
+  delayedCount?: number;
+  isPro?: boolean;
+  onUpgrade?: () => void;
+}) {
   // Track which move keys we've already rendered so newly arrived ones flash.
   const seenRef = useRef<Set<string> | null>(null);
   const [freshKeys, setFreshKeys] = useState<Set<string>>(new Set());
@@ -45,18 +55,41 @@ export function RecentMoves({ moves }: { moves: RecentMove[] }) {
     }
   }, [moves]);
 
-  if (moves.length === 0) return null;
+  if (moves.length === 0 && delayedCount === 0) return null;
 
   return (
     <div className="rounded-xl border border-zinc-800 bg-surface shadow-lg shadow-black/20">
       <div className="flex items-center gap-2 border-b border-zinc-800 px-4 py-3">
         <Zap className="h-4 w-4 text-cyan-300" aria-hidden="true" />
         <h2 className="text-sm font-semibold text-zinc-100">Live Whale Movements</h2>
-        <span className="ml-auto inline-flex items-center gap-1.5 font-mono text-[11px] text-emerald-400">
-          <span className="inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400 animate-beacon" />
-          live
-        </span>
+        {isPro ? (
+          <span className="ml-auto inline-flex items-center gap-1.5 font-mono text-[11px] text-emerald-400">
+            <span className="inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400 animate-beacon" />
+            real-time
+          </span>
+        ) : (
+          <button
+            type="button"
+            onClick={onUpgrade}
+            className="ml-auto inline-flex items-center gap-1.5 rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 font-mono text-[11px] text-amber-400 transition-colors hover:bg-amber-500/20"
+            title="Free tier is delayed 10 minutes — upgrade for the real-time stream"
+          >
+            <Lock className="h-3 w-3" aria-hidden="true" />
+            10-min delay · Upgrade
+          </button>
+        )}
       </div>
+
+      {!isPro && delayedCount > 0 && (
+        <button
+          type="button"
+          onClick={onUpgrade}
+          className="flex w-full items-center justify-center gap-2 border-b border-zinc-800/60 bg-amber-500/5 px-4 py-2 text-xs text-amber-300/90 transition-colors hover:bg-amber-500/10"
+        >
+          <Lock className="h-3 w-3" aria-hidden="true" />
+          {delayedCount} newer {delayedCount === 1 ? "move is" : "moves are"} hidden on the free tier — unlock the real-time feed (€9/mo)
+        </button>
+      )}
       <div className="max-h-72 divide-y divide-zinc-800/60 overflow-y-auto scroll-thin">
         {moves.map((m) => {
           const key = moveKey(m);
@@ -91,6 +124,11 @@ export function RecentMoves({ moves }: { moves: RecentMove[] }) {
             </a>
           );
         })}
+        {moves.length === 0 && (
+          <div className="px-4 py-8 text-center text-xs text-zinc-500">
+            No older moves to show yet. {!isPro && "Newer trades are on the real-time (Pro) feed."}
+          </div>
+        )}
       </div>
     </div>
   );

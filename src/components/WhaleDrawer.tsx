@@ -1,6 +1,6 @@
 // src/components/WhaleDrawer.tsx
 import { useEffect, useState } from "react";
-import { X, Lock, TrendingUp, ExternalLink, Send, Star, Link2, Check } from "lucide-react";
+import { X, Lock, TrendingUp, ExternalLink, Send, Star, Link2, Check, Crown } from "lucide-react";
 import type { WhaleTrader, WhalePosition } from "../types/whale";
 import {
   formatSignedUsd,
@@ -19,6 +19,8 @@ interface Props {
   onUnlock: () => void;
   isWatched: boolean;
   onToggleWatch: () => void;
+  isPro: boolean;
+  onUpgrade: () => void;
 }
 
 function VisibleTrade({ p }: { p: WhalePosition }) {
@@ -107,7 +109,15 @@ function LockedAlertCard({
   );
 }
 
-export function WhaleDrawer({ whale, onClose, onUnlock, isWatched, onToggleWatch }: Props) {
+export function WhaleDrawer({
+  whale,
+  onClose,
+  onUnlock,
+  isWatched,
+  onToggleWatch,
+  isPro,
+  onUpgrade,
+}: Props) {
   const [shared, setShared] = useState(false);
   useEffect(() => {
     if (!whale) return;
@@ -270,6 +280,63 @@ export function WhaleDrawer({ whale, onClose, onUnlock, isWatched, onToggleWatch
                 </div>
               </div>
 
+              {/* Advanced analytics — Pro-gated (blurred for free users) */}
+              <div>
+                <div className="mb-2 flex items-center gap-2">
+                  <Crown className="h-4 w-4 text-amber-400" aria-hidden="true" />
+                  <h3 className="text-sm font-semibold text-zinc-200">Advanced analytics</h3>
+                  {!isPro && (
+                    <span className="ml-auto rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 font-mono text-[10px] text-amber-400">
+                      PRO
+                    </span>
+                  )}
+                </div>
+                <div className="relative">
+                  <div
+                    className={`grid grid-cols-2 gap-3 ${!isPro ? "pointer-events-none select-none blur-[6px]" : ""}`}
+                    aria-hidden={!isPro}
+                  >
+                    <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 p-3">
+                      <div className="text-xs uppercase tracking-wide text-zinc-500">Max drawdown</div>
+                      <div className="mt-1 font-mono text-lg font-bold text-rose-400">
+                        {whale.maxDrawdownUsdc > 0 ? `-${formatCompactUsd(whale.maxDrawdownUsdc)}` : "\u2014"}
+                      </div>
+                    </div>
+                    <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 p-3">
+                      <div className="text-xs uppercase tracking-wide text-zinc-500">7d PnL</div>
+                      <div className={`mt-1 font-mono text-lg font-bold ${pnlColor(whale.pnl7d)}`}>
+                        {formatSignedUsd(whale.pnl7d)}
+                      </div>
+                    </div>
+                    <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 p-3">
+                      <div className="text-xs uppercase tracking-wide text-zinc-500">Open exposure</div>
+                      <div className="mt-1 font-mono text-lg font-bold text-zinc-100">
+                        {formatCompactUsd(whale.currentTopBet.amount)}
+                      </div>
+                    </div>
+                    <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 p-3">
+                      <div className="text-xs uppercase tracking-wide text-zinc-500">Active positions</div>
+                      <div className="mt-1 font-mono text-lg font-bold text-zinc-100">
+                        {whale.activePositionsCount}
+                      </div>
+                    </div>
+                  </div>
+
+                  {!isPro && (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 rounded-lg bg-zinc-950/40">
+                      <Lock className="h-5 w-5 text-amber-400" aria-hidden="true" />
+                      <button
+                        type="button"
+                        onClick={onUpgrade}
+                        className="rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-semibold text-zinc-950 transition-colors hover:bg-amber-400"
+                      >
+                        Unlock with Pro — €9/mo
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+
               {/* Visible historical trades */}
               <div>
                 <div className="mb-2 flex items-center gap-2">
@@ -312,7 +379,7 @@ export function WhaleDrawer({ whale, onClose, onUnlock, isWatched, onToggleWatch
                     className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg bg-cyan-500 px-4 py-2.5 text-sm font-semibold text-zinc-950 transition-colors hover:bg-cyan-400"
                   >
                     <Send className="h-4 w-4" aria-hidden="true" />
-                    Join VIP Telegram Channel (€29/mo)
+                    Join VIP Telegram Channel (€9/mo)
                   </a>
                 </div>
               </div>
