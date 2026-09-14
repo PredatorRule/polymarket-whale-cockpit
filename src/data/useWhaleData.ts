@@ -169,12 +169,19 @@ function adapt(list: ApiWhale[]): WhaleTrader[] {
   return ranked.map((w, i) => adaptOne(w, i + 1));
 }
 
-/** Look up any public wallet on demand via /api/wallet. */
-export async function lookupWallet(address: string): Promise<WhaleTrader | null> {
+/** Look up any public wallet on demand via /api/wallet. Passing the access
+ *  token unlocks the Pro-only advanced metrics in the server response. */
+export async function lookupWallet(
+  address: string,
+  accessToken?: string | null,
+): Promise<WhaleTrader | null> {
   const addr = address.trim().toLowerCase();
   if (!/^0x[0-9a-f]{40}$/.test(addr)) return null;
   try {
-    const r = await fetch(`/api/wallet?address=${addr}`, { cache: "no-store" });
+    const r = await fetch(`/api/wallet?address=${addr}`, {
+      cache: "no-store",
+      headers: accessToken ? { authorization: `Bearer ${accessToken}` } : {},
+    });
     if (!r.ok) return null;
     const data = (await r.json()) as { ok: boolean; whale: ApiWhale | null };
     if (!data.ok || !data.whale) return null;

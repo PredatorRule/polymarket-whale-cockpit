@@ -43,7 +43,7 @@ export default function App() {
     setLookupLoading(true);
     setLookupError(null);
     try {
-      const whale = await lookupWallet(address);
+      const whale = await lookupWallet(address, session?.access_token);
       if (whale) {
         setSelected(whale);
         if (pushUrl) {

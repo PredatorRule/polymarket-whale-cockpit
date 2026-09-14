@@ -3,8 +3,9 @@
 // shared auditWallet() so /api/wallet and the SSR /wallet/[address] page share
 // exactly one implementation.
 import { auditWallet, isAddress } from "../_lib/wallet";
+import { getAuthStatus, type AuthEnv } from "../_lib/auth";
 
-interface Env {
+interface Env extends AuthEnv {
   WALLET_CACHE_SECONDS?: string;
 }
 
@@ -14,9 +15,13 @@ export const onRequest = async (context: {
 }): Promise<Response> => {
   const { request, env } = context;
   const cacheSeconds = Number(env.WALLET_CACHE_SECONDS ?? "120") || 120;
+
+  // Plan-aware: advanced audit metrics are stripped for non-Pro server-side,
+  // so the response must not be shared-cached.
+  const auth = await getAuthStatus(request, env);
   const headers: Record<string, string> = {
     "content-type": "application/json",
-    "cache-control": `public, max-age=${cacheSeconds}`,
+    "cache-control": "private, no-store",
     "access-control-allow-origin": "*",
   };
 
@@ -36,7 +41,11 @@ export const onRequest = async (context: {
         headers,
       });
     }
-    // Keep the historical response shape (`whale`) the frontend expects.
+
+    // Free tier gets headline stats only. Advanced metrics (drawdown, per-
+    // position breakdown, exposure detail) are stripped BEFORE serialization,
+    // so they never reach a non-Pro client — the drawer blur is now real.
+    const isPro = auth.isPro;
     const whale = {
       address: audit.address,
       name: undefined as string | undefined,
@@ -48,14 +57,17 @@ export const onRequest = async (context: {
       winRate: audit.winRate,
       wins: audit.wins,
       losses: audit.losses,
-      maxDrawdownUsdc: audit.maxDrawdownUsdc,
+      maxDrawdownUsdc: isPro ? audit.maxDrawdownUsdc : 0,
       activePositionsCount: audit.activePositionsCount,
-      openValueUsdc: audit.openValueUsdc,
-      positions: audit.positions,
+      openValueUsdc: isPro ? audit.openValueUsdc : 0,
+      positions: isPro ? audit.positions : audit.positions.slice(0, 1),
       topBet: audit.topBet,
       lastTradeTs: audit.lastTradeTs,
     };
-    return new Response(JSON.stringify({ ok: true, whale }), { status: 200, headers });
+    return new Response(JSON.stringify({ ok: true, isPro, gated: !isPro, whale }), {
+      status: 200,
+      headers,
+    });
   } catch (err) {
     return new Response(
       JSON.stringify({
