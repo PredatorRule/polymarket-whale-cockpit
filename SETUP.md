@@ -22,6 +22,12 @@ alter table public.profiles enable row level security;
 create policy "own profile read" on public.profiles
   for select using (auth.uid() = id);
 
+-- REQUIRED: an RLS policy alone is not enough — the authenticated role also
+-- needs table-level SELECT, or PostgREST returns 403 for the browser read
+-- (while the SQL editor, running as admin, still sees the row). Without this
+-- the app silently treats a Pro user as free.
+grant select on public.profiles to authenticated;
+
 create or replace function public.handle_new_user()
 returns trigger language plpgsql security definer as $$
 begin

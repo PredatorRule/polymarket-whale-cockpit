@@ -44,14 +44,15 @@ async function fetchProfile(userId: string): Promise<Profile | null> {
     return null;
   }
   if (!data) {
+    // Empty read usually means a missing RLS SELECT policy OR no GRANT SELECT
+    // on the table for the `authenticated` role (PostgREST 403).
     console.warn(
       "[whale-cockpit] no profile row visible for",
       userId,
-      "— likely a missing RLS SELECT policy or no matching row.",
+      "— check the RLS SELECT policy and `grant select on profiles to authenticated`.",
     );
     return null;
   }
-  console.info("[whale-cockpit] profile loaded:", data.plan);
   return data as Profile;
 }
 
