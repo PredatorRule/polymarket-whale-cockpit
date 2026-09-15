@@ -21,6 +21,7 @@ interface Props {
   isWatched: boolean;
   onToggleWatch: () => void;
   isPro: boolean;
+  accessToken: string | null | undefined;
   onUpgrade: () => void;
 }
 
@@ -161,9 +162,40 @@ export function WhaleDrawer({
   isWatched,
   onToggleWatch,
   isPro,
+  accessToken,
   onUpgrade,
 }: Props) {
   const [shared, setShared] = useState(false);
+  const [inviteBusy, setInviteBusy] = useState(false);
+  const [inviteLink, setInviteLink] = useState<string | null>(null);
+  const [inviteError, setInviteError] = useState<string | null>(null);
+
+  // Pro users mint the VIP invite inline (no extra modal). Non-Pro fall back to
+  // onUnlock (which opens the upsell modal).
+  const getInvite = async () => {
+    setInviteBusy(true);
+    setInviteError(null);
+    try {
+      const res = await fetch("/api/telegram-invite", {
+        headers: accessToken ? { authorization: `Bearer ${accessToken}` } : {},
+      });
+      const data = (await res.json().catch(() => ({}))) as { ok?: boolean; invite?: string; error?: string };
+      if (res.ok && data.ok && data.invite) {
+        setInviteLink(data.invite);
+        window.open(data.invite, "_blank", "noopener,noreferrer");
+      } else if (res.status === 403 || data.error === "pro_required") {
+        onUpgrade();
+      } else if (data.error === "not_configured") {
+        setInviteError("VIP channel isn't set up yet. Please try again later.");
+      } else {
+        setInviteError("Couldn't generate your invite. Please try again in a moment.");
+      }
+    } catch {
+      setInviteError("Network error. Please try again.");
+    } finally {
+      setInviteBusy(false);
+    }
+  };
   useEffect(() => {
     if (!whale) return;
     const onKey = (e: KeyboardEvent) => {
@@ -478,14 +510,35 @@ export function WhaleDrawer({
                       VIP Telegram alerts are part of your Pro plan. Generate your
                       private, single-use channel invite.
                     </p>
-                    <button
-                      type="button"
-                      onClick={onUnlock}
-                      className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg bg-cyan-500 px-4 py-2.5 text-sm font-semibold text-zinc-950 transition-colors hover:bg-cyan-400"
-                    >
-                      <Send className="h-4 w-4" aria-hidden="true" />
-                      Get my VIP Telegram invite
-                    </button>
+                    {inviteLink ? (
+                      <a
+                        href={inviteLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg bg-cyan-500 px-4 py-2.5 text-sm font-semibold text-zinc-950 transition-colors hover:bg-cyan-400"
+                      >
+                        <ExternalLink className="h-4 w-4" aria-hidden="true" />
+                        Open your VIP invite
+                      </a>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => void getInvite()}
+                        disabled={inviteBusy}
+                        className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg bg-cyan-500 px-4 py-2.5 text-sm font-semibold text-zinc-950 transition-colors hover:bg-cyan-400 disabled:opacity-60"
+                      >
+                        <Send className="h-4 w-4" aria-hidden="true" />
+                        {inviteBusy ? "Generating…" : "Get my VIP Telegram invite"}
+                      </button>
+                    )}
+                    {inviteLink && (
+                      <p className="mt-2 text-center text-[11px] text-zinc-500">
+                        Single-use link, expires in 15 minutes.
+                      </p>
+                    )}
+                    {inviteError && (
+                      <p className="mt-2 text-center text-[11px] text-rose-400">{inviteError}</p>
+                    )}
                   </div>
                 ) : (
                   <>

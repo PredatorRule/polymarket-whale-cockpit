@@ -216,6 +216,7 @@ function Cockpit() {
         isWatched={selected ? watchlist.isWatched(selected.address) : false}
         onToggleWatch={() => selected && watchlist.toggle(selected.address)}
         isPro={isPro}
+        accessToken={session?.access_token}
         onUpgrade={() => setUpgradeOpen(true)}
       />
 
