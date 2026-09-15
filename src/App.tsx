@@ -158,8 +158,10 @@ function Cockpit() {
 
             <StatCards whales={filters.result} moves={filters.moves} />
 
-            <div className="flex items-center justify-end">
+            <div className="flex items-center justify-between gap-2">
+              <h2 className="text-sm font-semibold text-zinc-300">Live whale movements</h2>
               <ExportButton
+                type="moves"
                 accessToken={session?.access_token}
                 isPro={isPro}
                 onLocked={() => setUpgradeOpen(true)}
@@ -172,6 +174,16 @@ function Cockpit() {
               isPro={isPro}
               onUpgrade={() => setUpgradeOpen(true)}
             />
+
+            <div className="flex items-center justify-between gap-2 pt-2">
+              <h2 className="text-sm font-semibold text-zinc-300">Leaderboard</h2>
+              <ExportButton
+                type="leaderboard"
+                accessToken={session?.access_token}
+                isPro={isPro}
+                onLocked={() => setUpgradeOpen(true)}
+              />
+            </div>
 
             <LeaderboardTable
               whales={filters.result}
