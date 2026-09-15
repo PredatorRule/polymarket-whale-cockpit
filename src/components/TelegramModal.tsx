@@ -1,12 +1,8 @@
 // src/components/TelegramModal.tsx
-import { useEffect } from "react";
-import { X, Check, Zap, Bell, ShieldCheck, Link2, Send } from "lucide-react";
+import { useEffect, useState } from "react";
+import { X, Check, Zap, Bell, ShieldCheck, Link2, Send, Crown, Lock, Loader2, ExternalLink } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-
-import { STRIPE_CHECKOUT_URL } from "../lib/pricing";
-
-// €9/mo checkout (shared single source of truth).
-const CHECKOUT_URL = STRIPE_CHECKOUT_URL;
+import { PRO_PRICE_AMOUNT } from "../lib/pricing";
 
 interface ValueProp {
   icon: LucideIcon;
@@ -28,17 +24,32 @@ const VALUE_PROPS: ValueProp[] = [
   },
   {
     icon: Link2,
-    text: "Automated delivery — instant private channel access after checkout.",
+    text: "Instant private channel access — a single-use invite, generated on demand.",
   },
 ];
 
+/**
+ * VIP Telegram access. Telegram is now bundled into Pro (one subscription), so:
+ *  - Pro users mint a single-use invite from /api/telegram-invite (server-gated).
+ *  - Non-Pro users are shown the value + a route to upgrade.
+ */
 export function TelegramModal({
   open,
   onClose,
+  isPro,
+  accessToken,
+  onUpgrade,
 }: {
   open: boolean;
   onClose: () => void;
+  isPro: boolean;
+  accessToken: string | null | undefined;
+  onUpgrade: () => void;
 }) {
+  const [loading, setLoading] = useState(false);
+  const [invite, setInvite] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
   // Close on Escape.
   useEffect(() => {
     if (!open) return;
@@ -49,14 +60,47 @@ export function TelegramModal({
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
+  // Reset transient state whenever the modal is opened/closed.
+  useEffect(() => {
+    if (!open) {
+      setInvite(null);
+      setError(null);
+      setLoading(false);
+    }
+  }, [open]);
+
   if (!open) return null;
+
+  const mintInvite = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/telegram-invite", {
+        headers: accessToken ? { authorization: `Bearer ${accessToken}` } : {},
+      });
+      const data = (await res.json().catch(() => ({}))) as { ok?: boolean; invite?: string; error?: string };
+      if (res.ok && data.ok && data.invite) {
+        setInvite(data.invite);
+      } else if (res.status === 403 || data.error === "pro_required") {
+        onUpgrade();
+      } else if (res.status === 401) {
+        setError("Please sign in first, then try again.");
+      } else {
+        setError("Couldn't generate your invite. Please try again in a moment.");
+      }
+    } catch {
+      setError("Network error. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
       role="dialog"
       aria-modal="true"
-      aria-label="Subscribe to real-time whale signals"
+      aria-label="VIP Telegram whale signals"
     >
       <div
         className="absolute inset-0 bg-black/70 backdrop-blur-sm"
@@ -77,10 +121,12 @@ export function TelegramModal({
             <Send className="h-5 w-5 text-cyan-300" aria-hidden="true" />
           </div>
           <h2 className="mt-3 text-lg font-bold tracking-tight text-zinc-50">
-            Never Miss a $100k Whale Move Again
+            VIP Telegram Whale Alerts
           </h2>
           <p className="mt-1 text-sm text-zinc-400">
-            Get a Telegram alert within about a minute of a whale's large on-chain fill.
+            {isPro
+              ? "Included with Pro. Generate your private channel invite below."
+              : "Get a Telegram alert within about a minute of a whale's large on-chain fill."}
           </p>
         </div>
 
@@ -94,30 +140,67 @@ export function TelegramModal({
             </div>
           ))}
 
-          <div className="mt-2 flex items-end justify-between rounded-xl border border-zinc-800 bg-zinc-900/50 p-4">
-            <div>
-              <div className="font-mono text-3xl font-bold tabular-nums text-zinc-50">
-€9
-                <span className="ml-1 text-sm font-normal text-zinc-500">/ month</span>
+          {isPro ? (
+            <>
+              {invite ? (
+                <a
+                  href={invite}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-1 flex w-full items-center justify-center gap-2 rounded-xl bg-cyan-500 px-4 py-3 text-sm font-semibold text-zinc-950 transition-colors hover:bg-cyan-400"
+                >
+                  <ExternalLink className="h-4 w-4" aria-hidden="true" />
+                  Open your VIP invite
+                </a>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => void mintInvite()}
+                  disabled={loading}
+                  className="mt-1 flex w-full items-center justify-center gap-2 rounded-xl bg-cyan-500 px-4 py-3 text-sm font-semibold text-zinc-950 transition-colors hover:bg-cyan-400 disabled:opacity-60"
+                >
+                  {loading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                  ) : (
+                    <Send className="h-4 w-4" aria-hidden="true" />
+                  )}
+                  {loading ? "Generating invite…" : "Generate my VIP invite"}
+                </button>
+              )}
+              {invite && (
+                <p className="text-center text-xs text-zinc-500">
+                  This link works once and expires in 15 minutes.
+                </p>
+              )}
+              {error && <p className="text-center text-xs text-rose-400">{error}</p>}
+            </>
+          ) : (
+            <>
+              <div className="mt-2 rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 text-center">
+                <p className="text-sm text-zinc-300">
+                  VIP Telegram alerts are included with{" "}
+                  <span className="font-semibold text-amber-400">Pro</span> — one
+                  subscription unlocks the real-time feed, full wallet analytics,
+                  CSV exports, and this channel.
+                </p>
               </div>
-              <div className="mt-0.5 text-xs text-zinc-500">
-                Cancel anytime with one click
-              </div>
-            </div>
-            <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-400">
-              Live now
-            </span>
-          </div>
-
-          <a
-            href={CHECKOUT_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-1 flex w-full items-center justify-center gap-2 rounded-xl bg-cyan-500 px-4 py-3 text-sm font-semibold text-zinc-950 transition-colors hover:bg-cyan-400"
-          >
-            <Send className="h-4 w-4" aria-hidden="true" />
-            Subscribe &amp; Join Telegram Feed
-          </a>
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onUpgrade();
+                }}
+                className="mt-1 flex w-full items-center justify-center gap-2 rounded-xl bg-amber-500 px-4 py-3 text-sm font-semibold text-zinc-950 transition-colors hover:bg-amber-400"
+              >
+                <Crown className="h-4 w-4" aria-hidden="true" />
+                Go Pro to unlock — {PRO_PRICE_AMOUNT}/mo
+              </button>
+              <p className="flex items-center justify-center gap-1.5 text-center text-xs text-zinc-500">
+                <Lock className="h-3 w-3" aria-hidden="true" />
+                Access is granted automatically once you&apos;re Pro.
+              </p>
+            </>
+          )}
         </div>
       </div>
     </div>

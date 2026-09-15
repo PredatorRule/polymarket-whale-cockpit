@@ -67,6 +67,9 @@ npx wrangler pages secret put SUPABASE_URL           --project-name polymarket-w
 npx wrangler pages secret put SUPABASE_ANON_KEY      --project-name polymarket-whale-cockpit
 npx wrangler pages secret put SUPABASE_SERVICE_ROLE  --project-name polymarket-whale-cockpit
 npx wrangler pages secret put STRIPE_WEBHOOK_SECRET  --project-name polymarket-whale-cockpit
+# VIP Telegram is now a Pro perk (see /api/telegram-invite):
+npx wrangler pages secret put TELEGRAM_BOT_TOKEN     --project-name polymarket-whale-cockpit
+npx wrangler pages secret put TELEGRAM_CHAT_ID       --project-name polymarket-whale-cockpit
 ```
 
 | Secret | Value | Used by |
@@ -75,6 +78,8 @@ npx wrangler pages secret put STRIPE_WEBHOOK_SECRET  --project-name polymarket-w
 | `SUPABASE_ANON_KEY` | `sb_publishable_...` | auth helper (`/auth/v1/user`) |
 | `SUPABASE_SERVICE_ROLE` | service-role secret (**rotate if leaked**) | plan lookup, webhook profile writes |
 | `STRIPE_WEBHOOK_SECRET` | `whsec_...` from the webhook endpoint | verifies webhook signatures |
+| `TELEGRAM_BOT_TOKEN` | bot token; bot must be **channel admin** | `/api/telegram-invite` mints invites |
+| `TELEGRAM_CHAT_ID` | VIP channel id (e.g. `-100…`) | `/api/telegram-invite` target channel |
 
 ## 5. Stripe
 
@@ -87,6 +92,18 @@ npx wrangler pages secret put STRIPE_WEBHOOK_SECRET  --project-name polymarket-w
 
 The checkout link passes `client_reference_id` (Supabase user id) so the webhook
 maps the subscription to the right profile and sets `plan = 'pro'`.
+
+## 6. VIP Telegram (bundled into Pro)
+
+Telegram access is a Pro perk — there is **one** €9/mo subscription, not two.
+Pro users mint a single-use channel invite from `/api/telegram-invite` (gated:
+returns 403 for non-Pro). Requirements:
+
+- A Telegram channel with the bot added as an **admin** (needs invite perms).
+- `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` set as Pages secrets (above).
+
+The standalone `services/vip-access` worker and its separate €9 Payment Link are
+now superseded by this in-app flow and can be retired.
 
 ## Security model
 

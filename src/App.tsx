@@ -219,7 +219,16 @@ function Cockpit() {
         onUpgrade={() => setUpgradeOpen(true)}
       />
 
-      <TelegramModal open={telegramOpen} onClose={() => setTelegramOpen(false)} />
+      <TelegramModal
+        open={telegramOpen}
+        onClose={() => setTelegramOpen(false)}
+        isPro={isPro}
+        accessToken={session?.access_token}
+        onUpgrade={() => {
+          setTelegramOpen(false);
+          setUpgradeOpen(true);
+        }}
+      />
       <SignInModal open={signInOpen} onClose={() => setSignInOpen(false)} />
       <UpgradeModal
         open={upgradeOpen}

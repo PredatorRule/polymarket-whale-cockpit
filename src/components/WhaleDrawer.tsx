@@ -352,36 +352,60 @@ export function WhaleDrawer({
                 </div>
               </div>
 
-              {/* Live Telegram signal feed (gated) */}
+              {/* Live Telegram signal feed — included with Pro */}
               <div>
                 <div className="mb-2 flex items-center gap-2">
                   <Send className="h-4 w-4 text-cyan-300" aria-hidden="true" />
                   <h3 className="text-sm font-semibold text-zinc-200">
                     Live Telegram Execution Feed
                   </h3>
-                </div>
-                <div className="space-y-2">
-                  <LockedAlertCard side="YES" amount="$150K" onUnlock={onUnlock} />
-                  <LockedAlertCard side="NO" amount="$92K" onUnlock={onUnlock} />
+                  {!isPro && (
+                    <span className="ml-auto rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 font-mono text-[10px] text-amber-400">
+                      PRO
+                    </span>
+                  )}
                 </div>
 
-                {/* Conversion banner */}
-                <div className="mt-3 rounded-xl border border-cyan-500/30 bg-cyan-500/5 p-4">
-                  <p className="text-xs leading-relaxed text-zinc-300">
-                    Big whale fills move the market fast. Get large trades
-                    ($5k+) pushed to the private VIP Telegram channel within
-                    about a minute of the on-chain fill.
-                  </p>
-                  <a
-                    href="https://buy.stripe.com/aFadR12WXeU26jh9h84ko00"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg bg-cyan-500 px-4 py-2.5 text-sm font-semibold text-zinc-950 transition-colors hover:bg-cyan-400"
-                  >
-                    <Send className="h-4 w-4" aria-hidden="true" />
-                    Join VIP Telegram Channel (€9/mo)
-                  </a>
-                </div>
+                {isPro ? (
+                  <div className="rounded-xl border border-cyan-500/30 bg-cyan-500/5 p-4">
+                    <p className="text-xs leading-relaxed text-zinc-300">
+                      VIP Telegram alerts are part of your Pro plan. Generate your
+                      private, single-use channel invite.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={onUnlock}
+                      className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg bg-cyan-500 px-4 py-2.5 text-sm font-semibold text-zinc-950 transition-colors hover:bg-cyan-400"
+                    >
+                      <Send className="h-4 w-4" aria-hidden="true" />
+                      Get my VIP Telegram invite
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <div className="space-y-2">
+                      <LockedAlertCard side="YES" amount="$150K" onUnlock={onUnlock} />
+                      <LockedAlertCard side="NO" amount="$92K" onUnlock={onUnlock} />
+                    </div>
+
+                    {/* Conversion banner — Telegram is now bundled into Pro. */}
+                    <div className="mt-3 rounded-xl border border-cyan-500/30 bg-cyan-500/5 p-4">
+                      <p className="text-xs leading-relaxed text-zinc-300">
+                        Big whale fills move the market fast. Large trades ($5k+)
+                        are pushed to the private VIP Telegram channel within about
+                        a minute of the on-chain fill — included with Pro.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={onUnlock}
+                        className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg bg-cyan-500 px-4 py-2.5 text-sm font-semibold text-zinc-950 transition-colors hover:bg-cyan-400"
+                      >
+                        <Send className="h-4 w-4" aria-hidden="true" />
+                        Unlock VIP Telegram with Pro
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           </>
