@@ -110,6 +110,50 @@ function LockedAlertCard({
   );
 }
 
+/**
+ * Plausible teaser numbers shown UNDER the blur for free users. This is not the
+ * real data — the server strips real strategy/metrics for non-Pro callers
+ * (strategy=null, drawdown=0, etc.), so there is nothing to un-blur in devtools.
+ * These placeholders just make the locked panel look enticing rather than empty.
+ * Seeded from the address so a given wallet always shows the same teaser.
+ */
+function teaserHash(address: string): number {
+  let h = 0;
+  for (let i = 0; i < address.length; i++) h = (h * 31 + address.charCodeAt(i)) >>> 0;
+  return h;
+}
+
+function teaserProfile(address: string): {
+  archetype: string;
+  tagline: string;
+  avgEntryPrice: number;
+  profitFactor: number;
+  concentrationPct: number;
+  realizedPnl: number;
+  openPnl: number;
+} {
+  const h = teaserHash(address);
+  const rnd = (min: number, max: number, salt: number) =>
+    min + (((h ^ (salt * 2654435761)) >>> 0) % 1000) / 1000 * (max - min);
+  const archetypes = [
+    ["Concentrated Directional", "Bets big on a few strong convictions rather than spreading risk."],
+    ["Favorite Backer", "Grinds small edges on likely outcomes — high hit-rate, modest payouts."],
+    ["Longshot Hunter", "Chases underdogs for outsized payouts — lower hit-rate, big winners."],
+    ["Diversified Book", "Runs a broad portfolio across many markets, market-maker style."],
+    ["Value Trader", "Hunts mispriced mid-range odds where the crowd is unsure."],
+  ] as const;
+  const pick = archetypes[h % archetypes.length];
+  return {
+    archetype: pick[0],
+    tagline: pick[1],
+    avgEntryPrice: rnd(0.28, 0.82, 1),
+    profitFactor: rnd(1.3, 3.4, 2),
+    concentrationPct: rnd(18, 74, 3),
+    realizedPnl: Math.round(rnd(40_000, 480_000, 4)),
+    openPnl: Math.round(rnd(-30_000, 210_000, 5)),
+  };
+}
+
 export function WhaleDrawer({
   whale,
   onClose,
@@ -131,6 +175,13 @@ export function WhaleDrawer({
 
   const open = whale !== null;
   const visible = whale?.positions.filter((p) => !p.isLocked).slice(0, 2) ?? [];
+
+  // Pro sees the real computed strategy; free users see a seeded teaser under
+  // the blur (the real numbers are never sent to a non-Pro client).
+  const profile =
+    whale && isPro && whale.strategy ? whale.strategy : whale ? teaserProfile(whale.address) : null;
+  const teaserDrawdown = whale ? Math.round(((teaserHash(whale.address) % 400) + 20) * 1000) : 0;
+  const shownDrawdown = isPro ? (whale?.maxDrawdownUsdc ?? 0) : teaserDrawdown;
 
   return (
     <>
@@ -304,11 +355,11 @@ export function WhaleDrawer({
                     <div className="rounded-lg border border-amber-500/20 bg-gradient-to-b from-amber-500/10 to-transparent p-3">
                       <div className="flex items-center gap-2">
                         <span className="text-base font-bold text-amber-300">
-                          {whale.strategy?.archetype ?? "Directional Trader"}
+                          {profile?.archetype ?? "Directional Trader"}
                         </span>
                       </div>
                       <p className="mt-1 text-xs leading-relaxed text-zinc-400">
-                        {whale.strategy?.tagline ??
+                        {profile?.tagline ??
                           "Sign in with Pro to reveal this wallet's computed trading style."}
                       </p>
                     </div>
@@ -320,7 +371,7 @@ export function WhaleDrawer({
                           Profit factor
                         </div>
                         <div className="mt-1 font-mono text-lg font-bold text-zinc-100">
-                          {formatProfitFactor(whale.strategy?.profitFactor ?? 0)}
+                          {formatProfitFactor(profile?.profitFactor ?? 0)}
                         </div>
                         <div className="mt-0.5 text-[10px] text-zinc-600">$ won per $ lost</div>
                       </div>
@@ -329,8 +380,8 @@ export function WhaleDrawer({
                           Avg conviction
                         </div>
                         <div className="mt-1 font-mono text-lg font-bold text-zinc-100">
-                          {whale.strategy && whale.strategy.avgEntryPrice > 0
-                            ? formatCents(whale.strategy.avgEntryPrice)
+                          {profile && profile.avgEntryPrice > 0
+                            ? formatCents(profile.avgEntryPrice)
                             : "\u2014"}
                         </div>
                         <div className="mt-0.5 text-[10px] text-zinc-600">avg entry odds</div>
@@ -340,8 +391,8 @@ export function WhaleDrawer({
                           Concentration
                         </div>
                         <div className="mt-1 font-mono text-lg font-bold text-zinc-100">
-                          {whale.strategy && whale.strategy.concentrationPct > 0
-                            ? formatPercent(whale.strategy.concentrationPct, 0)
+                          {profile && profile.concentrationPct > 0
+                            ? formatPercent(profile.concentrationPct, 0)
                             : "\u2014"}
                         </div>
                         <div className="mt-0.5 text-[10px] text-zinc-600">top position share</div>
@@ -351,8 +402,8 @@ export function WhaleDrawer({
                           Max drawdown
                         </div>
                         <div className="mt-1 font-mono text-lg font-bold text-rose-400">
-                          {whale.maxDrawdownUsdc > 0
-                            ? `-${formatCompactUsd(whale.maxDrawdownUsdc)}`
+                          {shownDrawdown > 0
+                            ? `-${formatCompactUsd(shownDrawdown)}`
                             : "\u2014"}
                         </div>
                         <div className="mt-0.5 text-[10px] text-zinc-600">worst realized dip</div>
@@ -363,15 +414,15 @@ export function WhaleDrawer({
                     <div className="mt-3 flex items-center justify-between rounded-lg border border-zinc-800 bg-zinc-900/50 p-3">
                       <div>
                         <div className="text-xs uppercase tracking-wide text-zinc-500">Realized</div>
-                        <div className={`mt-1 font-mono text-sm font-bold ${pnlColor(whale.strategy?.realizedPnl ?? 0)}`}>
-                          {formatSignedUsd(whale.strategy?.realizedPnl ?? 0)}
+                        <div className={`mt-1 font-mono text-sm font-bold ${pnlColor(profile?.realizedPnl ?? 0)}`}>
+                          {formatSignedUsd(profile?.realizedPnl ?? 0)}
                         </div>
                       </div>
                       <div className="h-8 w-px bg-zinc-800" />
                       <div className="text-right">
                         <div className="text-xs uppercase tracking-wide text-zinc-500">Open (unrealized)</div>
-                        <div className={`mt-1 font-mono text-sm font-bold ${pnlColor(whale.strategy?.openPnl ?? 0)}`}>
-                          {formatSignedUsd(whale.strategy?.openPnl ?? 0)}
+                        <div className={`mt-1 font-mono text-sm font-bold ${pnlColor(profile?.openPnl ?? 0)}`}>
+                          {formatSignedUsd(profile?.openPnl ?? 0)}
                         </div>
                       </div>
                     </div>
