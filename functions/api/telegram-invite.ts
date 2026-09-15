@@ -37,12 +37,10 @@ export const onRequest = async (context: {
     });
   }
   if (!auth.isPro) {
-    // Include non-sensitive diagnostics so we can see WHY the server thinks
-    // this caller isn't Pro (plan lookup status / value / key used).
-    return new Response(
-      JSON.stringify({ ok: false, error: "pro_required", debug: auth.debug ?? null }),
-      { status: 403, headers },
-    );
+    return new Response(JSON.stringify({ ok: false, error: "pro_required" }), {
+      status: 403,
+      headers,
+    });
   }
 
   if (!env.TELEGRAM_BOT_TOKEN || !env.TELEGRAM_CHAT_ID) {

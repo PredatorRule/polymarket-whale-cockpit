@@ -15,13 +15,6 @@ export interface AuthStatus {
   userId: string | null;
   email: string | null;
   isPro: boolean;
-  // Non-sensitive diagnostics for debugging plan resolution.
-  debug?: {
-    userStatus: number;
-    planStatus: number;
-    planValue: string | null;
-    usedServiceRole: boolean;
-  };
 }
 
 const ANON: AuthStatus = { authenticated: false, userId: null, email: null, isPro: false };
@@ -53,34 +46,23 @@ export async function getAuthStatus(request: Request, env: AuthEnv): Promise<Aut
     if (!user.id) return ANON;
 
     // Resolve plan. Prefer the service role (authoritative, bypasses RLS).
-    const usedServiceRole = Boolean(env.SUPABASE_SERVICE_ROLE);
     const planKey = env.SUPABASE_SERVICE_ROLE ?? apikey;
     const planAuth = env.SUPABASE_SERVICE_ROLE ? `Bearer ${env.SUPABASE_SERVICE_ROLE}` : `Bearer ${token}`;
     let isPro = false;
-    let planStatus = 0;
-    let planValue: string | null = null;
     try {
       const pRes = await fetch(
         `${env.SUPABASE_URL}/rest/v1/profiles?id=eq.${encodeURIComponent(user.id)}&select=plan`,
         { headers: { apikey: planKey, authorization: planAuth } },
       );
-      planStatus = pRes.status;
       if (pRes.ok) {
         const rows = (await pRes.json()) as { plan?: string }[];
-        planValue = (Array.isArray(rows) && rows[0]?.plan) || null;
-        isPro = planValue === "pro";
+        isPro = Array.isArray(rows) && rows[0]?.plan === "pro";
       }
     } catch {
       isPro = false;
     }
 
-    return {
-      authenticated: true,
-      userId: user.id,
-      email: user.email ?? null,
-      isPro,
-      debug: { userStatus: userRes.status, planStatus, planValue, usedServiceRole },
-    };
+    return { authenticated: true, userId: user.id, email: user.email ?? null, isPro };
   } catch {
     return ANON;
   }
