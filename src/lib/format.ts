@@ -65,6 +65,13 @@ export function formatLastSeen(tsSeconds: number): string {
   });
 }
 
+/** Profit factor: gross $ won per $ lost. "∞" when there are no losses. */
+export function formatProfitFactor(value: number): string {
+  if (!Number.isFinite(value) || value >= 999) return "∞";
+  if (value <= 0) return "\u2014";
+  return `${value.toFixed(2)}×`;
+}
+
 /** Tailwind text color class for a PnL value. */
 export function pnlColor(value: number): string {
   if (value > 0) return "text-emerald-400";

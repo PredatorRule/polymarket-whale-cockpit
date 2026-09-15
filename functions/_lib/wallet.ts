@@ -1,6 +1,7 @@
 // functions/_lib/wallet.ts
 // Shared wallet-audit fetch used by /api/wallet (JSON) and /wallet/[address]
 // (SSR HTML). Files under _lib are not routed by Cloudflare Pages.
+import { deriveStrategy, type WalletStrategy } from "./strategy";
 
 const DATA_BASE = "https://data-api.polymarket.com";
 
@@ -53,6 +54,7 @@ export interface WalletAudit {
   positions: WalletPosition[];
   topBet: WalletPosition | null;
   lastTradeTs: number;
+  strategy: WalletStrategy;
 }
 
 export function isAddress(a: string): boolean {
@@ -119,6 +121,19 @@ export async function auditWallet(address: string, cacheTtl = 120): Promise<Wall
 
   const lastTradeTs = tradeRows.length > 0 ? pickN(tradeRows[0], ["timestamp"]) : 0;
 
+  // Derived trading-style archetype + edge metrics (computed by us).
+  const strategy = deriveStrategy({
+    positions: positions.map((p) => ({
+      totalCost: p.totalCost,
+      avgPrice: p.avgPrice,
+      currentPrice: p.currentPrice,
+      shares: p.shares,
+    })),
+    openValueUsdc,
+    openPnlUsdc: cashPnl,
+    realizedPnls: pnl,
+  });
+
   return {
     address: addr,
     totalPnl,
@@ -131,5 +146,6 @@ export async function auditWallet(address: string, cacheTtl = 120): Promise<Wall
     positions: positions.slice(0, 8),
     topBet,
     lastTradeTs,
+    strategy,
   };
 }

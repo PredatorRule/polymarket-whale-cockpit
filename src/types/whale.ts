@@ -26,6 +26,17 @@ export interface CurrentTopBet {
   amount: number; // dollars
 }
 
+export interface WalletStrategy {
+  archetype: string;
+  tagline: string;
+  avgEntryPrice: number; // 0..1
+  profitFactor: number; // gross wins / gross losses (realized)
+  concentrationPct: number; // largest open position as % of open book
+  realizedPnl: number;
+  openPnl: number;
+  avgPositionUsdc: number;
+}
+
 export interface WhaleTrader {
   id: string;
   rank: number;
@@ -47,6 +58,7 @@ export interface WhaleTrader {
   lastTradeTs: number; // seconds since epoch; 0 if unknown
   currentTopBet: CurrentTopBet;
   positions: WhalePosition[];
+  strategy: WalletStrategy | null; // derived; null when gated (non-Pro)
 }
 
 export type TimeHorizon = "all" | "30d" | "7d";

@@ -13,6 +13,8 @@
 //   LEADERBOARD_LIMIT (default "20")   how many top wallets to build
 //   WHALES_CACHE_SECONDS (default "600")
 
+import { deriveStrategy, type WalletStrategy } from "../_lib/strategy";
+
 const DATA_BASE = "https://data-api.polymarket.com";
 
 interface Env {
@@ -76,6 +78,7 @@ interface WinStats {
   losses: number;
   maxDrawdownUsdc: number;
   closedRows: number;
+  realizedPnls: number[];
 }
 
 /** Newest trade timestamp (seconds) for a wallet, or 0 if none/unavailable. */
@@ -122,6 +125,7 @@ async function closedStats(wallet: string): Promise<WinStats> {
     losses,
     maxDrawdownUsdc: dd,
     closedRows: total,
+    realizedPnls: pnl,
   };
 }
 
@@ -210,6 +214,7 @@ export interface NormalizedWhale {
   positions: ApiPosition[];
   topBet: ApiPosition | null;
   lastTradeTs: number; // seconds since epoch; 0 if unknown
+  strategy: WalletStrategy;
 }
 
 // Live "whale movements" moved to its own endpoint (/api/moves) so it has an
@@ -268,6 +273,17 @@ export const onRequest = async (context: { env: Env }): Promise<Response> => {
           positions: os.positions.slice(0, 8),
           topBet: os.topBet,
           lastTradeTs,
+          strategy: deriveStrategy({
+            positions: os.positions.map((p) => ({
+              totalCost: p.totalCost,
+              avgPrice: p.avgPrice,
+              currentPrice: p.currentPrice,
+              shares: p.shares,
+            })),
+            openValueUsdc: os.currentValueUsdc,
+            openPnlUsdc: os.cashPnlUsdc,
+            realizedPnls: cs.realizedPnls,
+          }),
         };
       }),
     );

@@ -9,6 +9,7 @@ import {
   formatSignedPercent,
   truncateAddress,
   formatCents,
+  formatProfitFactor,
   pnlColor,
 } from "../lib/format";
 import { Badge, OutcomePill, toneForBadge } from "./Badge";
@@ -280,11 +281,14 @@ export function WhaleDrawer({
                 </div>
               </div>
 
-              {/* Advanced analytics — Pro-gated (blurred for free users) */}
+              {/* Trader profile — derived, Pro-gated (blurred for free users) */}
               <div>
                 <div className="mb-2 flex items-center gap-2">
                   <Crown className="h-4 w-4 text-amber-400" aria-hidden="true" />
-                  <h3 className="text-sm font-semibold text-zinc-200">Advanced analytics</h3>
+                  <h3 className="text-sm font-semibold text-zinc-200">Trader profile</h3>
+                  <span className="rounded-full border border-zinc-700 bg-zinc-800/60 px-1.5 py-0.5 font-mono text-[9px] text-zinc-400">
+                    computed
+                  </span>
                   {!isPro && (
                     <span className="ml-auto rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 font-mono text-[10px] text-amber-400">
                       PRO
@@ -293,31 +297,82 @@ export function WhaleDrawer({
                 </div>
                 <div className="relative">
                   <div
-                    className={`grid grid-cols-2 gap-3 ${!isPro ? "pointer-events-none select-none blur-[6px]" : ""}`}
+                    className={!isPro ? "pointer-events-none select-none blur-[6px]" : ""}
                     aria-hidden={!isPro}
                   >
-                    <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 p-3">
-                      <div className="text-xs uppercase tracking-wide text-zinc-500">Max drawdown</div>
-                      <div className="mt-1 font-mono text-lg font-bold text-rose-400">
-                        {whale.maxDrawdownUsdc > 0 ? `-${formatCompactUsd(whale.maxDrawdownUsdc)}` : "\u2014"}
+                    {/* Archetype headline */}
+                    <div className="rounded-lg border border-amber-500/20 bg-gradient-to-b from-amber-500/10 to-transparent p-3">
+                      <div className="flex items-center gap-2">
+                        <span className="text-base font-bold text-amber-300">
+                          {whale.strategy?.archetype ?? "Directional Trader"}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-xs leading-relaxed text-zinc-400">
+                        {whale.strategy?.tagline ??
+                          "Sign in with Pro to reveal this wallet's computed trading style."}
+                      </p>
+                    </div>
+
+                    {/* Derived metric grid */}
+                    <div className="mt-3 grid grid-cols-2 gap-3">
+                      <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 p-3">
+                        <div className="text-xs uppercase tracking-wide text-zinc-500">
+                          Profit factor
+                        </div>
+                        <div className="mt-1 font-mono text-lg font-bold text-zinc-100">
+                          {formatProfitFactor(whale.strategy?.profitFactor ?? 0)}
+                        </div>
+                        <div className="mt-0.5 text-[10px] text-zinc-600">$ won per $ lost</div>
+                      </div>
+                      <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 p-3">
+                        <div className="text-xs uppercase tracking-wide text-zinc-500">
+                          Avg conviction
+                        </div>
+                        <div className="mt-1 font-mono text-lg font-bold text-zinc-100">
+                          {whale.strategy && whale.strategy.avgEntryPrice > 0
+                            ? formatCents(whale.strategy.avgEntryPrice)
+                            : "\u2014"}
+                        </div>
+                        <div className="mt-0.5 text-[10px] text-zinc-600">avg entry odds</div>
+                      </div>
+                      <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 p-3">
+                        <div className="text-xs uppercase tracking-wide text-zinc-500">
+                          Concentration
+                        </div>
+                        <div className="mt-1 font-mono text-lg font-bold text-zinc-100">
+                          {whale.strategy && whale.strategy.concentrationPct > 0
+                            ? formatPercent(whale.strategy.concentrationPct, 0)
+                            : "\u2014"}
+                        </div>
+                        <div className="mt-0.5 text-[10px] text-zinc-600">top position share</div>
+                      </div>
+                      <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 p-3">
+                        <div className="text-xs uppercase tracking-wide text-zinc-500">
+                          Max drawdown
+                        </div>
+                        <div className="mt-1 font-mono text-lg font-bold text-rose-400">
+                          {whale.maxDrawdownUsdc > 0
+                            ? `-${formatCompactUsd(whale.maxDrawdownUsdc)}`
+                            : "\u2014"}
+                        </div>
+                        <div className="mt-0.5 text-[10px] text-zinc-600">worst realized dip</div>
                       </div>
                     </div>
-                    <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 p-3">
-                      <div className="text-xs uppercase tracking-wide text-zinc-500">7d PnL</div>
-                      <div className={`mt-1 font-mono text-lg font-bold ${pnlColor(whale.pnl7d)}`}>
-                        {formatSignedUsd(whale.pnl7d)}
+
+                    {/* Realized vs open split */}
+                    <div className="mt-3 flex items-center justify-between rounded-lg border border-zinc-800 bg-zinc-900/50 p-3">
+                      <div>
+                        <div className="text-xs uppercase tracking-wide text-zinc-500">Realized</div>
+                        <div className={`mt-1 font-mono text-sm font-bold ${pnlColor(whale.strategy?.realizedPnl ?? 0)}`}>
+                          {formatSignedUsd(whale.strategy?.realizedPnl ?? 0)}
+                        </div>
                       </div>
-                    </div>
-                    <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 p-3">
-                      <div className="text-xs uppercase tracking-wide text-zinc-500">Open exposure</div>
-                      <div className="mt-1 font-mono text-lg font-bold text-zinc-100">
-                        {formatCompactUsd(whale.currentTopBet.amount)}
-                      </div>
-                    </div>
-                    <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 p-3">
-                      <div className="text-xs uppercase tracking-wide text-zinc-500">Active positions</div>
-                      <div className="mt-1 font-mono text-lg font-bold text-zinc-100">
-                        {whale.activePositionsCount}
+                      <div className="h-8 w-px bg-zinc-800" />
+                      <div className="text-right">
+                        <div className="text-xs uppercase tracking-wide text-zinc-500">Open (unrealized)</div>
+                        <div className={`mt-1 font-mono text-sm font-bold ${pnlColor(whale.strategy?.openPnl ?? 0)}`}>
+                          {formatSignedUsd(whale.strategy?.openPnl ?? 0)}
+                        </div>
                       </div>
                     </div>
                   </div>

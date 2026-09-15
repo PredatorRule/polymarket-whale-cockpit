@@ -2,7 +2,7 @@
 // Loads whale data from the /api/whales Pages Function (live Polymarket public
 // leaderboard + positions). Real data only — no mock is ever displayed.
 import { useEffect, useState } from "react";
-import type { WhaleTrader, WhaleCategory, Outcome, WhalePosition } from "../types/whale";
+import type { WhaleTrader, WhaleCategory, Outcome, WhalePosition, WalletStrategy } from "../types/whale";
 import { classifyTitles } from "../lib/classify";
 
 export type DataSource = "live" | "error" | "loading";
@@ -48,6 +48,7 @@ interface ApiWhale {
   positions: ApiPosition[];
   topBet: ApiPosition | null;
   lastTradeTs: number;
+  strategy: WalletStrategy | null;
 }
 
 interface ApiResponse {
@@ -161,6 +162,7 @@ function adaptOne(w: ApiWhale, rank: number): WhaleTrader {
           amount: w.openValueUsdc,
         },
     positions,
+    strategy: w.strategy ?? null,
   };
 }
 

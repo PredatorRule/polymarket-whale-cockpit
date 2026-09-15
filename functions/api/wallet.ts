@@ -63,6 +63,8 @@ export const onRequest = async (context: {
       positions: isPro ? audit.positions : audit.positions.slice(0, 1),
       topBet: audit.topBet,
       lastTradeTs: audit.lastTradeTs,
+      // Derived strategy insight is Pro-only — stripped for free callers.
+      strategy: isPro ? audit.strategy : null,
     };
     return new Response(JSON.stringify({ ok: true, isPro, gated: !isPro, whale }), {
       status: 200,
